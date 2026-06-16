@@ -5,13 +5,15 @@ import { html } from 'foldkit/html'
 import { m } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
-import { Dialog, Disclosure, Menu, Tooltip } from '@foldkit/ui'
+import { Dialog, Disclosure, Menu, Tabs as UiTabs, Tooltip } from '@foldkit/ui'
 import {
   Avatar,
+  Checkbox,
   DropdownMenu,
   elAttrs,
   Button,
   Sidebar,
+  Switch,
   Tooltip as SidebarTooltip,
   sxAttrs,
 } from '@foldstylex/foldkit'
@@ -135,6 +137,12 @@ export const Model = S.Struct({
     documentation: Tooltip.Model,
     settings: Tooltip.Model,
   }),
+  kitchenDialog: Dialog.Model,
+  termsCheckbox: Checkbox.Model,
+  marketingCheckbox: Checkbox.Model,
+  notificationsSwitch: Switch.Model,
+  kitchenTabs: UiTabs.Model,
+  kitchenToast: kitchenSink.KitchenToast.Model,
 })
 
 export type Model = typeof Model.Type
@@ -183,6 +191,15 @@ export const Message = S.Union([
   GotMobileMenuDialogMessage,
   GotSidebarTooltipMessage,
   kitchenSink.UpdatedEmailValue,
+  kitchenSink.ClickedOpenKitchenDialog,
+  kitchenSink.GotKitchenDialogMessage,
+  kitchenSink.GotTermsCheckboxMessage,
+  kitchenSink.GotMarketingCheckboxMessage,
+  kitchenSink.GotNotificationsSwitchMessage,
+  kitchenSink.GotKitchenTabsMessage,
+  kitchenSink.GotKitchenToastMessage,
+  kitchenSink.ClickedShowInfoToast,
+  kitchenSink.ClickedShowSuccessToast,
 ])
 
 export type Message = typeof Message.Type
@@ -421,6 +438,135 @@ export const update = (
         [],
       ],
 
+      ClickedOpenKitchenDialog: () => {
+        const [nextKitchenDialog, kitchenDialogCommands] = Dialog.open(
+          model.kitchenDialog,
+        )
+
+        return [
+          evo(model, { kitchenDialog: () => nextKitchenDialog }),
+          Command.mapMessages(kitchenDialogCommands, message =>
+            kitchenSink.GotKitchenDialogMessage({ message }),
+          ),
+        ]
+      },
+
+      GotKitchenDialogMessage: ({ message: dialogMessage }) => {
+        const [nextKitchenDialog, kitchenDialogCommands] = Dialog.update(
+          model.kitchenDialog,
+          dialogMessage,
+        )
+
+        return [
+          evo(model, { kitchenDialog: () => nextKitchenDialog }),
+          Command.mapMessages(kitchenDialogCommands, message =>
+            kitchenSink.GotKitchenDialogMessage({ message }),
+          ),
+        ]
+      },
+
+      GotTermsCheckboxMessage: ({ message: checkboxMessage }) => {
+        const [nextTermsCheckbox, termsCheckboxCommands] = Checkbox.update(
+          model.termsCheckbox,
+          checkboxMessage,
+        )
+
+        return [
+          evo(model, { termsCheckbox: () => nextTermsCheckbox }),
+          Command.mapMessages(termsCheckboxCommands, message =>
+            kitchenSink.GotTermsCheckboxMessage({ message }),
+          ),
+        ]
+      },
+
+      GotMarketingCheckboxMessage: ({ message: checkboxMessage }) => {
+        const [nextMarketingCheckbox, marketingCheckboxCommands] =
+          Checkbox.update(model.marketingCheckbox, checkboxMessage)
+
+        return [
+          evo(model, { marketingCheckbox: () => nextMarketingCheckbox }),
+          Command.mapMessages(marketingCheckboxCommands, message =>
+            kitchenSink.GotMarketingCheckboxMessage({ message }),
+          ),
+        ]
+      },
+
+      GotNotificationsSwitchMessage: ({ message: switchMessage }) => {
+        const [nextNotificationsSwitch, switchCommands] = Switch.update(
+          model.notificationsSwitch,
+          switchMessage,
+        )
+
+        return [
+          evo(model, { notificationsSwitch: () => nextNotificationsSwitch }),
+          Command.mapMessages(switchCommands, message =>
+            kitchenSink.GotNotificationsSwitchMessage({ message }),
+          ),
+        ]
+      },
+
+      GotKitchenTabsMessage: ({ message: tabsMessage }) => {
+        const [nextKitchenTabs, kitchenTabsCommands] =
+          kitchenSink.KitchenTabs.update(model.kitchenTabs, tabsMessage)
+
+        return [
+          evo(model, { kitchenTabs: () => nextKitchenTabs }),
+          Command.mapMessages(kitchenTabsCommands, message =>
+            kitchenSink.GotKitchenTabsMessage({ message }),
+          ),
+        ]
+      },
+
+      GotKitchenToastMessage: ({ message: toastMessage }) => {
+        const [nextKitchenToast, kitchenToastCommands] =
+          kitchenSink.KitchenToast.update(model.kitchenToast, toastMessage)
+
+        return [
+          evo(model, { kitchenToast: () => nextKitchenToast }),
+          Command.mapMessages(kitchenToastCommands, message =>
+            kitchenSink.GotKitchenToastMessage({ message }),
+          ),
+        ]
+      },
+
+      ClickedShowInfoToast: () => {
+        const [nextKitchenToast, kitchenToastCommands] =
+          kitchenSink.KitchenToast.show(model.kitchenToast, {
+            variant: 'Info',
+            payload: {
+              title: 'Changes saved',
+              maybeDescription: Option.some(
+                'Your preferences have been updated.',
+              ),
+            },
+          })
+
+        return [
+          evo(model, { kitchenToast: () => nextKitchenToast }),
+          Command.mapMessages(kitchenToastCommands, message =>
+            kitchenSink.GotKitchenToastMessage({ message }),
+          ),
+        ]
+      },
+
+      ClickedShowSuccessToast: () => {
+        const [nextKitchenToast, kitchenToastCommands] =
+          kitchenSink.KitchenToast.show(model.kitchenToast, {
+            variant: 'Success',
+            payload: {
+              title: 'Uploaded successfully',
+              maybeDescription: Option.some('kit-manual.pdf is now available.'),
+            },
+          })
+
+        return [
+          evo(model, { kitchenToast: () => nextKitchenToast }),
+          Command.mapMessages(kitchenToastCommands, message =>
+            kitchenSink.GotKitchenToastMessage({ message }),
+          ),
+        ]
+      },
+
       GotSidebarTooltipMessage: ({ id, message: tooltipMessage }) => {
         const [nextTooltip, tooltipCommands] = Tooltip.update(
           sidebarTooltipModel(model, id),
@@ -469,6 +615,15 @@ export const init: Runtime.ApplicationInit<Model, Message> = () => [
       documentation: SidebarTooltip.init('sidebar-tooltip-documentation'),
       settings: SidebarTooltip.init('sidebar-tooltip-settings'),
     },
+    kitchenDialog: Dialog.init({ id: 'kitchen-dialog' }),
+    termsCheckbox: Checkbox.init({ id: 'terms-checkbox' }),
+    marketingCheckbox: Checkbox.init({
+      id: 'marketing-checkbox',
+      isChecked: true,
+    }),
+    notificationsSwitch: Switch.init({ id: 'notifications-switch' }),
+    kitchenTabs: UiTabs.init({ id: 'kitchen-tabs' }),
+    kitchenToast: kitchenSink.KitchenToast.init({ id: 'kitchen-toast' }),
   },
   [],
 ]

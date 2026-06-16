@@ -4,23 +4,6 @@ import { colors } from '@foldstylex/tokens/colors.stylex.ts'
 import { layout } from '@foldstylex/tokens/layout.stylex.ts'
 
 export const inputStyles = stylex.create({
-  field: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.375rem',
-    width: '100%',
-    maxWidth: '20rem',
-  },
-  label: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    fontSize: '0.875rem',
-    fontWeight: 500,
-    lineHeight: 1,
-    color: colors.foreground,
-    userSelect: 'none',
-  },
   input: {
     display: 'flex',
     width: '100%',
@@ -52,10 +35,5 @@ export const inputStyles = stylex.create({
       opacity: 0.5,
       backgroundColor: 'light-dark(transparent, oklch(1 0 0 / 5%))',
     },
-  },
-  description: {
-    fontSize: '0.875rem',
-    lineHeight: 1.25,
-    color: colors.mutedForeground,
   },
 })

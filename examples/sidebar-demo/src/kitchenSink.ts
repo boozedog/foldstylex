@@ -1,15 +1,22 @@
+import { Schema as S } from 'effect'
 import type { Html } from 'foldkit/html'
 import { html } from 'foldkit/html'
-import { Schema as S } from 'effect'
 import { m } from 'foldkit/message'
+import { Tabs as UiTabs } from '@foldkit/ui'
 
 import {
   Avatar,
   Badge,
   Button,
   Card,
+  Checkbox,
+  Dialog,
+  Field,
   Input,
   Separator,
+  Switch,
+  Tabs,
+  Toast,
   elAttrs,
   sxAttrs,
 } from '@foldstylex/foldkit'
@@ -17,7 +24,54 @@ import { cardStyles } from '@foldstylex/styles'
 
 import type { Message, Model } from './main.js'
 
+export const KitchenTabs = Tabs.create<'Account' | 'Password' | 'Notifications'>()
+export const KitchenToast = Toast.create()
+
 export const UpdatedEmailValue = m('UpdatedEmailValue', { value: S.String })
+
+export const ClickedOpenKitchenDialog = m('ClickedOpenKitchenDialog')
+export const GotKitchenDialogMessage = m('GotKitchenDialogMessage', {
+  message: Dialog.Message,
+})
+export const GotTermsCheckboxMessage = m('GotTermsCheckboxMessage', {
+  message: Checkbox.Message,
+})
+export const GotMarketingCheckboxMessage = m('GotMarketingCheckboxMessage', {
+  message: Checkbox.Message,
+})
+export const GotNotificationsSwitchMessage = m('GotNotificationsSwitchMessage', {
+  message: Switch.Message,
+})
+export const GotKitchenTabsMessage = m('GotKitchenTabsMessage', {
+  message: UiTabs.Message,
+})
+export const GotKitchenToastMessage = m('GotKitchenToastMessage', {
+  message: KitchenToast.Message,
+})
+export const ClickedShowInfoToast = m('ClickedShowInfoToast')
+export const ClickedShowSuccessToast = m('ClickedShowSuccessToast')
+
+const kitchenTabPanels = (tab: 'Account' | 'Password' | 'Notifications'): Html => {
+  const h = html<Message>()
+
+  switch (tab) {
+    case 'Account':
+      return h.p(
+        elAttrs<Message>(sxAttrs(h, cardStyles.description)),
+        ['Make changes to your account here. Click save when you are done.'],
+      )
+    case 'Password':
+      return h.p(
+        elAttrs<Message>(sxAttrs(h, cardStyles.description)),
+        ['Change your password here. After saving, you will be logged out.'],
+      )
+    case 'Notifications':
+      return h.p(
+        elAttrs<Message>(sxAttrs(h, cardStyles.description)),
+        ['Configure how you receive notifications.'],
+      )
+  }
+}
 
 export const view = (model: Model): Html => {
   const h = html<Message>()
@@ -49,11 +103,22 @@ export const view = (model: Model): Html => {
               buttonsCard(h),
               badgesCard(h),
               formCard(h, model),
+              controlsCard(h, model),
+              dialogCard(h, model),
+              tabsCard(h, model),
+              toastCard(h, model),
               displayCard(h),
             ],
           ),
         ],
       ),
+      h.submodel({
+        slotId: model.kitchenToast.id,
+        model: model.kitchenToast,
+        view: KitchenToast.view,
+        viewInputs: KitchenToast.styledViewInputs({ ariaLabel: 'Notifications' }),
+        toParentMessage: message => GotKitchenToastMessage({ message }),
+      }),
     ],
   )
 }
@@ -141,6 +206,137 @@ const formCard = (
     ]),
   ])
 
+const controlsCard = (h: ReturnType<typeof html<Message>>, model: Model): Html =>
+  Card.root([
+    Card.header([
+      Card.title('Controls'),
+      Card.description('Checkbox and switch fields using the shared Field layout.'),
+    ]),
+    Card.content([
+      h.submodel({
+        slotId: model.termsCheckbox.id,
+        model: model.termsCheckbox,
+        view: Checkbox.view,
+        viewInputs: Checkbox.styledViewInputs(model.termsCheckbox, {
+          label: 'Accept terms and conditions',
+          description:
+            'You agree to our Terms of Service and Privacy Policy.',
+        }),
+        toParentMessage: message => GotTermsCheckboxMessage({ message }),
+      }),
+      h.submodel({
+        slotId: model.marketingCheckbox.id,
+        model: model.marketingCheckbox,
+        view: Checkbox.view,
+        viewInputs: Checkbox.styledViewInputs(model.marketingCheckbox, {
+          label: 'Marketing emails',
+          description: 'Receive emails about new products and features.',
+        }),
+        toParentMessage: message => GotMarketingCheckboxMessage({ message }),
+      }),
+      h.submodel({
+        slotId: model.notificationsSwitch.id,
+        model: model.notificationsSwitch,
+        view: Switch.view,
+        viewInputs: Switch.styledViewInputs(model.notificationsSwitch, {
+          label: 'Push notifications',
+          description: 'Send notifications to your device.',
+        }),
+        toParentMessage: message => GotNotificationsSwitchMessage({ message }),
+      }),
+    ]),
+  ])
+
+const dialogCard = (h: ReturnType<typeof html<Message>>, model: Model): Html =>
+  Card.root([
+    Card.header([
+      Card.title('Dialog'),
+      Card.description('Modal overlay with title, description, and actions.'),
+    ]),
+    Card.content([
+      Button.view<Message>({
+        label: 'Open dialog',
+        variant: 'outline',
+        onClick: ClickedOpenKitchenDialog(),
+      }),
+      h.submodel({
+        slotId: model.kitchenDialog.id,
+        model: model.kitchenDialog,
+        view: Dialog.view,
+        viewInputs: Dialog.styledViewInputs({
+          id: model.kitchenDialog.id,
+          title: 'Edit profile',
+          description:
+            'Make changes to your profile here. Click save when you are done.',
+          panelSize: 'sm',
+          showClose: true,
+          footer: [
+            Button.view<Message>({
+              label: 'Cancel',
+              variant: 'outline',
+              onClick: GotKitchenDialogMessage({
+                message: Dialog.RequestedClose(),
+              }),
+            }),
+            Button.view<Message>({
+              label: 'Save changes',
+              onClick: GotKitchenDialogMessage({
+                message: Dialog.RequestedClose(),
+              }),
+            }),
+          ],
+        }),
+        toParentMessage: message => GotKitchenDialogMessage({ message }),
+      }),
+    ]),
+  ])
+
+const tabsCard = (h: ReturnType<typeof html<Message>>, model: Model): Html =>
+  Card.root([
+    Card.header([
+      Card.title('Tabs'),
+      Card.description('Segmented navigation for related panel content.'),
+    ]),
+    Card.content([
+      h.submodel({
+        slotId: model.kitchenTabs.id,
+        model: model.kitchenTabs,
+        view: KitchenTabs.view,
+        viewInputs: KitchenTabs.styledViewInputs({
+          tabs: ['Account', 'Password', 'Notifications'],
+          ariaLabel: 'Account settings',
+          renderPanel: kitchenTabPanels,
+        }),
+        toParentMessage: message => GotKitchenTabsMessage({ message }),
+      }),
+    ]),
+  ])
+
+const toastCard = (h: ReturnType<typeof html<Message>>, _model: Model): Html =>
+  Card.root([
+    Card.header([
+      Card.title('Toast'),
+      Card.description('Transient notifications that auto-dismiss.'),
+    ]),
+    Card.content([
+      h.div(
+        elAttrs<Message>(sxAttrs(h, cardStyles.row)),
+        [
+          Button.view<Message>({
+            label: 'Show info',
+            variant: 'outline',
+            onClick: ClickedShowInfoToast(),
+          }),
+          Button.view<Message>({
+            label: 'Show success',
+            variant: 'outline',
+            onClick: ClickedShowSuccessToast(),
+          }),
+        ],
+      ),
+    ]),
+  ])
+
 const displayCard = (h: ReturnType<typeof html<Message>>): Html =>
   Card.root([
     Card.header([
@@ -166,5 +362,10 @@ const displayCard = (h: ReturnType<typeof html<Message>>): Html =>
         elAttrs<Message>(sxAttrs(h, cardStyles.description)),
         ['Content below a horizontal separator.'],
       ),
+      Field.group<Message>({
+        children: [
+          Field.label('Standalone field label'),
+        ],
+      }),
     ]),
   ])

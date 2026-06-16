@@ -2,7 +2,7 @@ import { Input } from '@foldkit/ui'
 import type { Html } from 'foldkit/html'
 import { html } from 'foldkit/html'
 
-import { inputStyles } from '@foldstylex/styles'
+import { fieldStyles, inputStyles } from '@foldstylex/styles'
 
 import { elAttrs, sxAttrs } from './sx.js'
 
@@ -30,12 +30,12 @@ export const view = <ParentMessage>(
     ...(config.isDisabled === true ? { isDisabled: true } : {}),
     toView: attributes =>
       h.div(
-        elAttrs<ParentMessage>(sxAttrs(h, inputStyles.field)),
+        elAttrs<ParentMessage>(sxAttrs(h, fieldStyles.field)),
         [
           h.label(
             elAttrs<ParentMessage>(
               attributes.label,
-              sxAttrs(h, inputStyles.label),
+              sxAttrs(h, fieldStyles.label),
             ),
             [config.label],
           ),
@@ -47,10 +47,10 @@ export const view = <ParentMessage>(
           ),
           ...(config.description !== undefined
             ? [
-                h.span(
+                h.p(
                   elAttrs<ParentMessage>(
                     attributes.description,
-                    sxAttrs(h, inputStyles.description),
+                    sxAttrs(h, fieldStyles.description),
                   ),
                   [config.description],
                 ),
