@@ -16,6 +16,8 @@ import {
 } from '@foldstylex/foldkit'
 import { buttonStyles, globalStyles, sidebarStyles } from '@foldstylex/styles'
 
+import * as kitchenSink from './kitchenSink.js'
+
 import {
   audioWaveformIcon,
   badgeCheckIcon,
@@ -121,6 +123,7 @@ export const Model = S.Struct({
   projectMenuSales: Menu.Model,
   projectMenuTravel: Menu.Model,
   mobileMenuDialog: Dialog.Model,
+  emailValue: S.String,
 })
 
 export type Model = typeof Model.Type
@@ -163,6 +166,7 @@ export const Message = S.Union([
   ClickedSidebarTrigger,
   ClickedInertSubItem,
   GotMobileMenuDialogMessage,
+  kitchenSink.UpdatedEmailValue,
 ])
 
 export type Message = typeof Message.Type
@@ -377,6 +381,11 @@ export const update = (
           ),
         ]
       },
+
+      UpdatedEmailValue: ({ value }) => [
+        evo(model, { emailValue: () => value }),
+        [],
+      ],
     }),
   )
 
@@ -404,6 +413,7 @@ export const init: Runtime.ApplicationInit<Model, Message> = () => [
       isAnimated: true,
     }),
     mobileMenuDialog: Dialog.init({ id: 'mobile-menu' }),
+    emailValue: '',
   },
   [],
 ]
@@ -781,6 +791,7 @@ export const view = (model: Model): Document => {
         Sidebar.desktop(navigation, sidebarOptions),
         mobileMenu,
         Sidebar.inset({
+          children: kitchenSink.view(model),
           headerChildren: [
             h.div(
               elAttrs<Message>(sxAttrs(h, sidebarStyles.insetHeaderInner)),

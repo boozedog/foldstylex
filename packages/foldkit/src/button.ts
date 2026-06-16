@@ -7,7 +7,13 @@ import { buttonStyles } from '@foldstylex/styles'
 
 import { elAttrs, sxAttrs } from './sx.js'
 
-export type ButtonVariant = 'default' | 'ghost' | 'outline'
+export type ButtonVariant =
+  | 'default'
+  | 'secondary'
+  | 'destructive'
+  | 'outline'
+  | 'ghost'
+  | 'link'
 export type ButtonSize = 'default' | 'sm' | 'icon' | 'iconSm'
 
 export type ButtonViewConfig<ParentMessage> = Readonly<{
@@ -21,16 +27,26 @@ export type ButtonViewConfig<ParentMessage> = Readonly<{
 
 const variantStyle = (variant: ButtonVariant) => {
   switch (variant) {
+    case 'secondary':
+      return buttonStyles.variantSecondary
+    case 'destructive':
+      return buttonStyles.variantDestructive
     case 'ghost':
       return buttonStyles.variantGhost
     case 'outline':
       return buttonStyles.variantOutline
+    case 'link':
+      return buttonStyles.variantLink
     default:
       return buttonStyles.variantDefault
   }
 }
 
-const sizeStyle = (size: ButtonSize) => {
+const sizeStyle = (size: ButtonSize, variant: ButtonVariant) => {
+  if (variant === 'link') {
+    return undefined
+  }
+
   switch (size) {
     case 'sm':
       return buttonStyles.sizeSm
@@ -73,7 +89,7 @@ export const view = <ParentMessage>(
           h,
           buttonStyles.base,
           variantStyle(variant),
-          sizeStyle(size),
+          sizeStyle(size, variant),
         ),
       ),
       children,

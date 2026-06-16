@@ -59,16 +59,44 @@ export const buttonStyles = stylex.create({
       color: colors.accentForeground,
     },
   },
+  variantSecondary: {
+    backgroundColor: colors.secondary,
+    color: colors.secondaryForeground,
+    ':hover': {
+      opacity: 0.9,
+    },
+  },
+  variantDestructive: {
+    backgroundColor: 'light-dark(oklch(0.577 0.245 27.325 / 10%), oklch(0.704 0.191 22.216 / 20%))',
+    color: colors.destructive,
+    ':hover': {
+      backgroundColor: 'light-dark(oklch(0.577 0.245 27.325 / 20%), oklch(0.704 0.191 22.216 / 30%))',
+    },
+    ':focus-visible': {
+      outlineColor: colors.destructive,
+    },
+  },
+  variantLink: {
+    backgroundColor: 'transparent',
+    color: colors.primary,
+    height: 'auto',
+    paddingInline: 0,
+    paddingBlock: 0,
+    ':hover': {
+      textDecoration: 'underline',
+      textUnderlineOffset: '4px',
+    },
+  },
   sizeDefault: {
-    height: '2.25rem',
-    paddingInline: '1rem',
+    height: '2rem',
+    paddingInline: '0.625rem',
     paddingBlock: '0.5rem',
   },
   sizeSm: {
-    height: '2rem',
-    paddingInline: '0.75rem',
-    gap: '0.375rem',
-    fontSize: '0.875rem',
+    height: '1.75rem',
+    paddingInline: '0.625rem',
+    gap: '0.25rem',
+    fontSize: '0.8125rem',
   },
   sizeIcon: {
     height: '2.25rem',
