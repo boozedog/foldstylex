@@ -103,7 +103,11 @@ export const styledViewInputs = <ParentMessage>(
     return h.dialog(
       elAttrs<ParentMessage>(
         dialog,
-        sxAttrs(h, dialogStyles.dialog),
+        sxAttrs(
+          h,
+          dialogStyles.dialog,
+          isVisible ? dialogStyles.dialogOpen : undefined,
+        ),
         ...(config.extraDialogAttributes ?? []),
       ),
       isVisible

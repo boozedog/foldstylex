@@ -5,20 +5,19 @@ import { layout } from '@foldstylex/tokens/layout.stylex.ts'
 
 export const dialogStyles = stylex.create({
   dialog: {
-    position: 'fixed',
-    inset: 0,
-    zIndex: 50,
+    padding: 0,
+    margin: 0,
+    borderStyle: 'none',
+    backgroundColor: 'transparent',
+    color: colors.popoverForeground,
+  },
+  dialogOpen: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
     maxWidth: '100vw',
     maxHeight: '100vh',
-    padding: 0,
-    margin: 0,
-    borderStyle: 'none',
-    backgroundColor: 'transparent',
-    color: colors.popoverForeground,
   },
   backdrop: {
     position: 'fixed',
