@@ -11,12 +11,7 @@ export const dropdownMenuStyles = stylex.create({
     minWidth: 0,
   },
   wrapperAction: {
-    position: 'absolute',
-    inset: 0,
-    width: 'auto',
-    height: 'auto',
-    pointerEvents: 'none',
-    zIndex: 1,
+    display: 'contents',
   },
   content: {
     zIndex: 50,

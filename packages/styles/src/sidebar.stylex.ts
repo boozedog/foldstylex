@@ -25,6 +25,12 @@ export const sidebarStyles = stylex.create({
     borderRightWidth: 1,
     borderRightStyle: 'solid',
     borderRightColor: colors.sidebarBorder,
+    transitionProperty: 'width',
+    transitionDuration: '200ms',
+    transitionTimingFunction: 'linear',
+  },
+  desktopCollapsed: {
+    width: layout.sidebarWidthIcon,
   },
   desktopVisible: {
     '@media (min-width: 768px)': {
@@ -43,15 +49,17 @@ export const sidebarStyles = stylex.create({
     flex: 1,
     minHeight: 0,
     flexDirection: 'column',
-    gap: 0,
+    gap: '0.5rem',
     overflowY: 'auto',
     overflowX: 'hidden',
-    padding: '0.5rem',
+  },
+  contentCollapsed: {
+    overflow: 'hidden',
   },
   groupList: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 0,
+    gap: '0.5rem',
     listStyle: 'none',
     margin: 0,
     padding: 0,
@@ -65,12 +73,10 @@ export const sidebarStyles = stylex.create({
     gap: '0.5rem',
     padding: '0.5rem',
     flexShrink: 0,
-    borderTopWidth: 1,
-    borderTopStyle: 'solid',
-    borderTopColor: colors.sidebarBorder,
   },
   group: {
     display: 'flex',
+    boxSizing: 'border-box',
     width: '100%',
     minWidth: 0,
     flexDirection: 'column',
@@ -90,6 +96,14 @@ export const sidebarStyles = stylex.create({
     transitionProperty: 'margin, opacity',
     transitionDuration: '200ms',
     transitionTimingFunction: 'linear',
+  },
+  groupLabelCollapsed: {
+    marginTop: '-2rem',
+    opacity: 0,
+    pointerEvents: 'none',
+  },
+  collapseHidden: {
+    display: 'none',
   },
   groupLabelButton: {
     display: 'flex',
@@ -122,10 +136,13 @@ export const sidebarStyles = stylex.create({
     width: '100%',
     minWidth: 0,
     flexDirection: 'column',
-    gap: 0,
+    gap: '0.25rem',
     listStyle: 'none',
     margin: 0,
     padding: 0,
+  },
+  menuCollapsed: {
+    gap: 0,
   },
   menuItem: {
     position: 'relative',
@@ -194,11 +211,24 @@ export const sidebarStyles = stylex.create({
     padding: '0.5rem',
     fontSize: '0.875rem',
   },
+  menuButtonCollapsed: {
+    width: '2rem',
+    height: '2rem',
+    padding: '0.5rem',
+  },
+  menuButtonLgCollapsed: {
+    width: '2rem',
+    height: '2rem',
+    padding: 0,
+  },
   menuButtonInner: {
     display: 'flex',
     width: '100%',
     alignItems: 'center',
     gap: '0.5rem',
+  },
+  menuButtonInnerCollapsed: {
+    width: 'auto',
   },
   menuButtonWithAction: {
     paddingRight: '2rem',
@@ -215,6 +245,9 @@ export const sidebarStyles = stylex.create({
     fontWeight: 500,
   },
   menuButtonIcon: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
     width: '1rem',
     height: '1rem',
     flexShrink: 0,
@@ -293,8 +326,16 @@ export const sidebarStyles = stylex.create({
     flexDirection: 'column',
     backgroundColor: colors.background,
     color: colors.foreground,
+    transitionProperty: 'margin-left',
+    transitionDuration: '200ms',
+    transitionTimingFunction: 'linear',
     '@media (min-width: 768px)': {
       marginLeft: layout.sidebarWidth,
+    },
+  },
+  insetCollapsed: {
+    '@media (min-width: 768px)': {
+      marginLeft: layout.sidebarWidthIcon,
     },
   },
   insetHeader: {

@@ -5,13 +5,14 @@ import { html } from 'foldkit/html'
 import { m } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
-import { Dialog, Disclosure, Menu } from '@foldkit/ui'
+import { Dialog, Disclosure, Menu, Tooltip } from '@foldkit/ui'
 import {
   Avatar,
   DropdownMenu,
   elAttrs,
   Button,
   Sidebar,
+  Tooltip as SidebarTooltip,
   sxAttrs,
 } from '@foldstylex/foldkit'
 import { buttonStyles, globalStyles, sidebarStyles } from '@foldstylex/styles'
@@ -55,6 +56,9 @@ const PLATFORM_DISCLOSURE_IDS = [
 ] as const
 
 type PlatformDisclosureId = (typeof PLATFORM_DISCLOSURE_IDS)[number]
+
+const PLATFORM_TOOLTIP_IDS = PLATFORM_DISCLOSURE_IDS
+type PlatformTooltipId = PlatformDisclosureId
 
 const PROJECT_IDS = [
   'design-engineering',
@@ -124,6 +128,13 @@ export const Model = S.Struct({
   projectMenuTravel: Menu.Model,
   mobileMenuDialog: Dialog.Model,
   emailValue: S.String,
+  sidebarOpen: S.Boolean,
+  sidebarTooltips: S.Struct({
+    playground: Tooltip.Model,
+    models: Tooltip.Model,
+    documentation: Tooltip.Model,
+    settings: Tooltip.Model,
+  }),
 })
 
 export type Model = typeof Model.Type
@@ -154,6 +165,10 @@ export const ClickedInertSubItem = m('ClickedInertSubItem')
 export const GotMobileMenuDialogMessage = m('GotMobileMenuDialogMessage', {
   message: Dialog.Message,
 })
+export const GotSidebarTooltipMessage = m('GotSidebarTooltipMessage', {
+  id: S.Literals(PLATFORM_TOOLTIP_IDS),
+  message: Tooltip.Message,
+})
 
 export const Message = S.Union([
   ClickedProject,
@@ -166,6 +181,7 @@ export const Message = S.Union([
   ClickedSidebarTrigger,
   ClickedInertSubItem,
   GotMobileMenuDialogMessage,
+  GotSidebarTooltipMessage,
   kitchenSink.UpdatedEmailValue,
 ])
 
@@ -229,6 +245,21 @@ const withProjectMenu = (
       projectId === 'travel' ? menu : model.projectMenuTravel,
   })
 
+const sidebarTooltipModel = (model: Model, id: PlatformTooltipId): Tooltip.Model =>
+  model.sidebarTooltips[id]
+
+const withSidebarTooltip = (
+  model: Model,
+  id: PlatformTooltipId,
+  tooltip: Tooltip.Model,
+): Model =>
+  evo(model, {
+    sidebarTooltips: () => ({
+      ...model.sidebarTooltips,
+      [id]: tooltip,
+    }),
+  })
+
 const closeMobileMenu = (
   model: Model,
 ): readonly [Model, ReadonlyArray<Command.Command<Message>>] => {
@@ -271,7 +302,10 @@ export const update = (
         return [nextModel, mobileCommands]
       },
 
-      ClickedSidebarTrigger: () => [model, []],
+      ClickedSidebarTrigger: () => [
+        evo(model, { sidebarOpen: () => !model.sidebarOpen }),
+        [],
+      ],
 
       ClickedInertSubItem: () => closeMobileMenu(model),
 
@@ -386,6 +420,20 @@ export const update = (
         evo(model, { emailValue: () => value }),
         [],
       ],
+
+      GotSidebarTooltipMessage: ({ id, message: tooltipMessage }) => {
+        const [nextTooltip, tooltipCommands] = Tooltip.update(
+          sidebarTooltipModel(model, id),
+          tooltipMessage,
+        )
+
+        return [
+          withSidebarTooltip(model, id, nextTooltip),
+          Command.mapMessages(tooltipCommands, message =>
+            GotSidebarTooltipMessage({ id, message }),
+          ),
+        ]
+      },
     }),
   )
 
@@ -414,6 +462,13 @@ export const init: Runtime.ApplicationInit<Model, Message> = () => [
     }),
     mobileMenuDialog: Dialog.init({ id: 'mobile-menu' }),
     emailValue: '',
+    sidebarOpen: true,
+    sidebarTooltips: {
+      playground: SidebarTooltip.init('sidebar-tooltip-playground'),
+      models: SidebarTooltip.init('sidebar-tooltip-models'),
+      documentation: SidebarTooltip.init('sidebar-tooltip-documentation'),
+      settings: SidebarTooltip.init('sidebar-tooltip-settings'),
+    },
   },
   [],
 ]
@@ -422,21 +477,39 @@ export const init: Runtime.ApplicationInit<Model, Message> = () => [
 
 const sidebarMenuButtonAttrs = <ParentMessage>(
   h: ReturnType<typeof html<ParentMessage>>,
-) => sxAttrs(h, sidebarStyles.menuButton, sidebarStyles.menuButtonLg)
+  isCollapsed: boolean,
+) =>
+  sxAttrs(
+    h,
+    sidebarStyles.menuButton,
+    sidebarStyles.menuButtonLg,
+    isCollapsed ? sidebarStyles.menuButtonCollapsed : undefined,
+    isCollapsed ? sidebarStyles.menuButtonLgCollapsed : undefined,
+  )
 
 const teamButtonContent = <ParentMessage>(
   h: ReturnType<typeof html<ParentMessage>>,
   team: (typeof TEAMS)[TeamId],
+  isCollapsed: boolean,
 ) =>
   h.div(
-    elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.menuButtonInner)),
-    [
-      h.div(
-        elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.brandLogo)),
-        [team.logo],
+    elAttrs<ParentMessage>(
+      sxAttrs(
+        h,
+        sidebarStyles.menuButtonInner,
+        isCollapsed ? sidebarStyles.menuButtonInnerCollapsed : undefined,
       ),
+    ),
+    [
+      h.div(elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.brandLogo)), [team.logo]),
       h.div(
-        elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.brandText)),
+        elAttrs<ParentMessage>(
+          sxAttrs(
+            h,
+            sidebarStyles.brandText,
+            isCollapsed ? sidebarStyles.collapseHidden : undefined,
+          ),
+        ),
         [
           h.span(elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.brandName)), [
             team.name,
@@ -448,7 +521,13 @@ const teamButtonContent = <ParentMessage>(
         ],
       ),
       h.span(
-        elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.menuButtonChevron)),
+        elAttrs<ParentMessage>(
+          sxAttrs(
+            h,
+            sidebarStyles.menuButtonChevron,
+            isCollapsed ? sidebarStyles.collapseHidden : undefined,
+          ),
+        ),
         [chevronsUpDownIcon],
       ),
     ],
@@ -457,14 +536,15 @@ const teamButtonContent = <ParentMessage>(
 const teamMenuViewInputs = <ParentMessage>(
   h: ReturnType<typeof html<ParentMessage>>,
   team: (typeof TEAMS)[TeamId],
+  isCollapsed: boolean,
 ) =>
   DropdownMenu.styledViewInputs<TeamMenuItem, ParentMessage>({
     wide: true,
     isAnimated: true,
     anchor: { placement: 'right-start', gap: 4, padding: 8 },
     items: TEAM_MENU_ITEMS,
-    buttonContent: teamButtonContent(h, team),
-    buttonAttributes: sidebarMenuButtonAttrs(h),
+    buttonContent: teamButtonContent(h, team, isCollapsed),
+    buttonAttributes: sidebarMenuButtonAttrs(h, isCollapsed),
     itemGroupKey: item => (item === 'add-team' ? 'actions' : 'teams'),
     groupLabel: groupKey =>
       groupKey === 'teams' ? 'Teams' : undefined,
@@ -490,6 +570,7 @@ const teamMenuViewInputs = <ParentMessage>(
 
 const userMenuViewInputs = <ParentMessage>(
   h: ReturnType<typeof html<ParentMessage>>,
+  isCollapsed: boolean,
 ) =>
   DropdownMenu.styledViewInputs<UserMenuItem, ParentMessage>({
     wide: true,
@@ -497,7 +578,13 @@ const userMenuViewInputs = <ParentMessage>(
     anchor: { placement: 'right-end', gap: 4, padding: 8 },
     items: USER_MENU_ITEMS,
     buttonContent: h.div(
-      elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.menuButtonInner)),
+      elAttrs<ParentMessage>(
+        sxAttrs(
+          h,
+          sidebarStyles.menuButtonInner,
+          isCollapsed ? sidebarStyles.menuButtonInnerCollapsed : undefined,
+        ),
+      ),
       [
         Avatar.view({
           fallback: 'CN',
@@ -507,7 +594,13 @@ const userMenuViewInputs = <ParentMessage>(
           shape: 'lg',
         }),
         h.div(
-          elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.brandText)),
+          elAttrs<ParentMessage>(
+            sxAttrs(
+              h,
+              sidebarStyles.brandText,
+              isCollapsed ? sidebarStyles.collapseHidden : undefined,
+            ),
+          ),
           [
             h.span(elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.brandName)), [
               'shadcn',
@@ -519,12 +612,18 @@ const userMenuViewInputs = <ParentMessage>(
           ],
         ),
         h.span(
-          elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.menuButtonChevron)),
+          elAttrs<ParentMessage>(
+            sxAttrs(
+              h,
+              sidebarStyles.menuButtonChevron,
+              isCollapsed ? sidebarStyles.collapseHidden : undefined,
+            ),
+          ),
           [chevronsUpDownIcon],
         ),
       ],
     ),
-    buttonAttributes: sidebarMenuButtonAttrs(h),
+    buttonAttributes: sidebarMenuButtonAttrs(h, isCollapsed),
     itemGroupKey: item =>
       item === 'upgrade'
         ? 'upgrade'
@@ -574,18 +673,36 @@ const projectMenu = (
   h: ReturnType<typeof html<Message>>,
   model: Model,
   projectId: ProjectId,
+  slotPrefix: string,
 ) =>
   h.submodel({
-    slotId: projectMenuModel(model, projectId).id,
+    slotId: `${slotPrefix}-${projectMenuModel(model, projectId).id}`,
     model: projectMenuModel(model, projectId),
     view: ProjectMenu.view,
     viewInputs: projectMenuViewInputs(h),
     toParentMessage: message => GotProjectMenuMessage({ projectId, message }),
   })
 
-const navConfig = (model: Model, h: ReturnType<typeof html<Message>>): Sidebar.SidebarNavConfig<Message> => {
-  const activeTeam = TEAMS[model.activeTeam]
+type NavConfigOptions = Readonly<{
+  slotPrefix: string
+  isCollapsed: boolean
+}>
 
+const navTooltip = (
+  model: Model,
+  id: PlatformTooltipId,
+): Sidebar.SidebarNavTooltip<Message> => ({
+  model: sidebarTooltipModel(model, id),
+  toParentMessage: message => GotSidebarTooltipMessage({ id, message }),
+})
+
+const navConfig = (
+  model: Model,
+  h: ReturnType<typeof html<Message>>,
+  { slotPrefix, isCollapsed }: NavConfigOptions,
+): Sidebar.SidebarNavConfig<Message> => {
+  const activeTeam = TEAMS[model.activeTeam]
+  const withTooltip = slotPrefix === 'desktop'
   return {
     brand: {
       name: activeTeam.name,
@@ -593,10 +710,10 @@ const navConfig = (model: Model, h: ReturnType<typeof html<Message>>): Sidebar.S
       logo: activeTeam.logo,
       chevron: chevronsUpDownIcon,
       trigger: h.submodel({
-        slotId: model.teamMenu.id,
+        slotId: `${slotPrefix}-${model.teamMenu.id}`,
         model: model.teamMenu,
         view: TeamMenu.view,
-        viewInputs: teamMenuViewInputs(h, activeTeam),
+        viewInputs: teamMenuViewInputs(h, activeTeam, isCollapsed),
         toParentMessage: message => GotTeamMenuMessage({ message }),
       }),
     },
@@ -632,6 +749,7 @@ const navConfig = (model: Model, h: ReturnType<typeof html<Message>>): Sidebar.S
             model: model.platformPlayground,
             toParentMessage: message =>
               GotPlatformDisclosureMessage({ id: 'playground', message }),
+            ...(withTooltip ? { tooltip: navTooltip(model, 'playground') } : {}),
           },
           {
             id: 'models',
@@ -645,6 +763,7 @@ const navConfig = (model: Model, h: ReturnType<typeof html<Message>>): Sidebar.S
             model: model.platformModels,
             toParentMessage: message =>
               GotPlatformDisclosureMessage({ id: 'models', message }),
+            ...(withTooltip ? { tooltip: navTooltip(model, 'models') } : {}),
           },
           {
             id: 'documentation',
@@ -659,6 +778,7 @@ const navConfig = (model: Model, h: ReturnType<typeof html<Message>>): Sidebar.S
             model: model.platformDocumentation,
             toParentMessage: message =>
               GotPlatformDisclosureMessage({ id: 'documentation', message }),
+            ...(withTooltip ? { tooltip: navTooltip(model, 'documentation') } : {}),
           },
           {
             id: 'settings',
@@ -673,12 +793,14 @@ const navConfig = (model: Model, h: ReturnType<typeof html<Message>>): Sidebar.S
             model: model.platformSettings,
             toParentMessage: message =>
               GotPlatformDisclosureMessage({ id: 'settings', message }),
+            ...(withTooltip ? { tooltip: navTooltip(model, 'settings') } : {}),
           },
         ],
       },
       {
         id: 'projects',
         label: 'Projects',
+        hideWhenCollapsed: true,
         ...(model.activeProject !== undefined
           ? { activeItemId: model.activeProject }
           : {}),
@@ -688,21 +810,21 @@ const navConfig = (model: Model, h: ReturnType<typeof html<Message>>): Sidebar.S
             label: 'Design Engineering',
             icon: frameIcon,
             onClick: ClickedProject({ id: 'design-engineering' }),
-            action: projectMenu(h, model, 'design-engineering'),
+            action: projectMenu(h, model, 'design-engineering', slotPrefix),
           },
           {
             id: 'sales-marketing',
             label: 'Sales & Marketing',
             icon: pieChartIcon,
             onClick: ClickedProject({ id: 'sales-marketing' }),
-            action: projectMenu(h, model, 'sales-marketing'),
+            action: projectMenu(h, model, 'sales-marketing', slotPrefix),
           },
           {
             id: 'travel',
             label: 'Travel',
             icon: mapIcon,
             onClick: ClickedProject({ id: 'travel' }),
-            action: projectMenu(h, model, 'travel'),
+            action: projectMenu(h, model, 'travel', slotPrefix),
           },
           {
             id: 'more',
@@ -719,10 +841,10 @@ const navConfig = (model: Model, h: ReturnType<typeof html<Message>>): Sidebar.S
       avatarFallback: 'CN',
       chevron: chevronsUpDownIcon,
       trigger: h.submodel({
-        slotId: model.userMenu.id,
+        slotId: `${slotPrefix}-${model.userMenu.id}`,
         model: model.userMenu,
         view: UserMenu.view,
-        viewInputs: userMenuViewInputs(h),
+        viewInputs: userMenuViewInputs(h, isCollapsed),
         toParentMessage: message => GotUserMenuMessage({ message }),
       }),
     },
@@ -731,8 +853,24 @@ const navConfig = (model: Model, h: ReturnType<typeof html<Message>>): Sidebar.S
 
 export const view = (model: Model): Document => {
   const h = html<Message>()
-  const navigation = navConfig(model, h)
-  const sidebarOptions = { chevron: chevronRightIcon }
+  const isCollapsed = !model.sidebarOpen
+  const desktopNavigation = navConfig(model, h, {
+    slotPrefix: 'desktop',
+    isCollapsed,
+  })
+  const mobileNavigation = navConfig(model, h, {
+    slotPrefix: 'mobile',
+    isCollapsed: false,
+  })
+  const sidebarOptions = {
+    chevron: chevronRightIcon,
+    isCollapsed,
+    slotPrefix: 'desktop',
+  }
+  const mobileSidebarOptions = {
+    chevron: chevronRightIcon,
+    slotPrefix: 'mobile',
+  }
 
   const mobileMenu = h.submodel({
     slotId: model.mobileMenuDialog.id,
@@ -771,7 +909,7 @@ export const view = (model: Model): Document => {
                             ),
                           ],
                         ),
-                        Sidebar.nav(navigation, sidebarOptions),
+                        Sidebar.nav(mobileNavigation, mobileSidebarOptions),
                       ],
                     ),
                   ],
@@ -788,10 +926,11 @@ export const view = (model: Model): Document => {
     body: h.div(
       elAttrs<Message>(sxAttrs(h, globalStyles.root, sidebarStyles.shell)),
       [
-        Sidebar.desktop(navigation, sidebarOptions),
+        Sidebar.desktop(desktopNavigation, sidebarOptions),
         mobileMenu,
         Sidebar.inset({
           children: kitchenSink.view(model),
+          isCollapsed,
           headerChildren: [
             h.div(
               elAttrs<Message>(sxAttrs(h, sidebarStyles.insetHeaderInner)),

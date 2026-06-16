@@ -1,15 +1,22 @@
 import { Disclosure } from '@foldkit/ui'
+import type { Model as TooltipModel, Message as TooltipMessage } from '@foldkit/ui/tooltip'
 import type { Html } from 'foldkit/html'
 import { html } from 'foldkit/html'
 
 import { sidebarStyles } from '@foldstylex/styles'
 
 import { elAttrs, sxAttrs } from './sx.js'
+import * as StyledTooltip from './tooltip.js'
 
 export type SubNavItem<ParentMessage> = Readonly<{
   id: string
   label: string
   onClick: ParentMessage
+}>
+
+export type SidebarNavTooltip<ParentMessage> = Readonly<{
+  model: TooltipModel
+  toParentMessage: (message: TooltipMessage) => ParentMessage
 }>
 
 export type NavItem<ParentMessage> = Readonly<{
@@ -22,6 +29,8 @@ export type NavItem<ParentMessage> = Readonly<{
   subItems?: ReadonlyArray<SubNavItem<ParentMessage>>
   model?: Disclosure.Model
   toParentMessage?: (message: Disclosure.Message) => ParentMessage
+  /** Shown to the right of the trigger in icon-collapsed mode. */
+  tooltip?: SidebarNavTooltip<ParentMessage>
 }>
 
 export type SidebarGroupConfig<ParentMessage> = Readonly<{
@@ -30,6 +39,8 @@ export type SidebarGroupConfig<ParentMessage> = Readonly<{
   items: ReadonlyArray<NavItem<ParentMessage>>
   activeItemId?: string
   activeSubItemId?: string
+  /** Hide the entire group in icon-collapsed mode (matches shadcn NavProjects). */
+  hideWhenCollapsed?: boolean
   model?: Disclosure.Model
   toParentMessage?: (message: Disclosure.Message) => ParentMessage
 }>
@@ -56,8 +67,41 @@ export type SidebarNavConfig<ParentMessage> = Readonly<{
   user?: SidebarUserConfig
 }>
 
+export type SidebarOptions = Readonly<{
+  chevron?: Html
+  isCollapsed?: boolean
+  /** Prefix for disclosure submodel slotIds when the same nav renders in multiple DOM positions (e.g. desktop + mobile). */
+  slotPrefix?: string
+}>
+
+type SidebarCtx = Readonly<{
+  chevron?: Html
+  isCollapsed: boolean
+  slotPrefix: string
+}>
+
+const submodelSlotId = (ctx: SidebarCtx, id: string): string =>
+  ctx.slotPrefix === '' ? id : `${ctx.slotPrefix}-${id}`
+
+const sidebarCtx = (options?: SidebarOptions): SidebarCtx => ({
+  ...(options?.chevron !== undefined ? { chevron: options.chevron } : {}),
+  isCollapsed: options?.isCollapsed === true,
+  slotPrefix: options?.slotPrefix ?? '',
+})
+
+const menuStyles = <ParentMessage>(
+  h: ReturnType<typeof html<ParentMessage>>,
+  ctx: SidebarCtx,
+) =>
+  sxAttrs(
+    h,
+    sidebarStyles.menu,
+    ctx.isCollapsed ? sidebarStyles.menuCollapsed : undefined,
+  )
+
 const menuButtonStyles = <ParentMessage>(
   h: ReturnType<typeof html<ParentMessage>>,
+  ctx: SidebarCtx,
   isActive: boolean,
   muted = false,
   large = false,
@@ -68,12 +112,15 @@ const menuButtonStyles = <ParentMessage>(
     sidebarStyles.menuButton,
     large ? sidebarStyles.menuButtonLg : undefined,
     muted ? sidebarStyles.menuButtonMuted : undefined,
-    withAction ? sidebarStyles.menuButtonWithAction : undefined,
+    withAction && !ctx.isCollapsed ? sidebarStyles.menuButtonWithAction : undefined,
     isActive ? sidebarStyles.menuButtonActive : undefined,
+    ctx.isCollapsed ? sidebarStyles.menuButtonCollapsed : undefined,
+    ctx.isCollapsed && large ? sidebarStyles.menuButtonLgCollapsed : undefined,
   )
 
 const menuItemChildren = <ParentMessage>(
   h: ReturnType<typeof html<ParentMessage>>,
+  ctx: SidebarCtx,
   item: NavItem<ParentMessage>,
   chevron?: Html,
   chevronOpen = false,
@@ -93,7 +140,13 @@ const menuItemChildren = <ParentMessage>(
       ]
     : []),
   h.span(
-    elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.menuButtonLabel)),
+    elAttrs<ParentMessage>(
+      sxAttrs(
+        h,
+        sidebarStyles.menuButtonLabel,
+        ctx.isCollapsed ? sidebarStyles.collapseHidden : undefined,
+      ),
+    ),
     [item.label],
   ),
   ...(chevron !== undefined
@@ -104,6 +157,7 @@ const menuItemChildren = <ParentMessage>(
               h,
               sidebarStyles.menuButtonChevron,
               chevronOpen ? sidebarStyles.menuButtonChevronOpen : undefined,
+              ctx.isCollapsed ? sidebarStyles.collapseHidden : undefined,
             ),
           ),
           [chevron],
@@ -143,6 +197,7 @@ const subMenu = <ParentMessage>(
 
 const renderCollapsibleMenuItem = <ParentMessage>(
   h: ReturnType<typeof html<ParentMessage>>,
+  ctx: SidebarCtx,
   group: SidebarGroupConfig<ParentMessage>,
   item: NavItem<ParentMessage> & {
     model: Disclosure.Model
@@ -152,7 +207,7 @@ const renderCollapsibleMenuItem = <ParentMessage>(
   chevron: Html,
 ): Html =>
   h.submodel({
-    slotId: `${group.id}-${item.id}`,
+    slotId: submodelSlotId(ctx, `${group.id}-${item.id}`),
     model: item.model,
     view: Disclosure.view,
     viewInputs: {
@@ -160,65 +215,102 @@ const renderCollapsibleMenuItem = <ParentMessage>(
         h.li(
           elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.menuItem)),
           [
-            h.button(
+            menuItemTrigger(
+              h,
+              ctx,
+              item,
+              false,
               elAttrs<ParentMessage>(
                 attributes.button,
-                menuButtonStyles(h, false),
+                menuButtonStyles(h, ctx, false),
               ),
-              menuItemChildren(h, item, chevron, item.model.isOpen),
             ),
-            ...(item.model.isOpen
-              ? [h.div([...attributes.panel], [subMenu(h, group, item.subItems)])]
-              : []),
+            h.div(
+              elAttrs<ParentMessage>(
+                sxAttrs(
+                  h,
+                  ctx.isCollapsed || !item.model.isOpen
+                    ? sidebarStyles.collapseHidden
+                    : undefined,
+                ),
+                [...attributes.panel],
+              ),
+              [subMenu(h, group, item.subItems)],
+            ),
           ],
         ),
     },
     toParentMessage: item.toParentMessage,
   })
 
-const menuItemButton = <ParentMessage>(
+const tooltipEnabled = <ParentMessage>(
+  ctx: SidebarCtx,
+  item: NavItem<ParentMessage>,
+): boolean => ctx.isCollapsed && item.tooltip !== undefined
+
+const menuItemTrigger = <ParentMessage>(
   h: ReturnType<typeof html<ParentMessage>>,
+  ctx: SidebarCtx,
   item: NavItem<ParentMessage>,
   isActive: boolean,
-): Html =>
-  h.button(
-    elAttrs<ParentMessage>(
-      ...(item.onClick !== undefined ? [h.OnClick(item.onClick)] : []),
-      menuButtonStyles(
-        h,
-        isActive,
-        item.muted === true,
-        false,
-        item.action !== undefined,
-      ),
+  triggerAttributes: ReadonlyArray<unknown> = elAttrs<ParentMessage>(
+    ...(item.onClick !== undefined ? [h.OnClick(item.onClick)] : []),
+    menuButtonStyles(
+      h,
+      ctx,
+      isActive,
+      item.muted === true,
+      false,
+      item.action !== undefined,
     ),
-    menuItemChildren(h, item),
-  )
+  ),
+): Html =>
+  item.tooltip !== undefined
+    ? StyledTooltip.wrapButton(h, {
+        model: item.tooltip.model,
+        label: item.label,
+        enabled: tooltipEnabled(ctx, item),
+        toParentMessage: item.tooltip.toParentMessage,
+        triggerAttributes,
+        triggerChildren: menuItemChildren(h, ctx, item),
+      })
+    : h.button(
+        elAttrs<ParentMessage>(triggerAttributes),
+        menuItemChildren(h, ctx, item),
+      )
+
+const menuItemButton = <ParentMessage>(
+  h: ReturnType<typeof html<ParentMessage>>,
+  ctx: SidebarCtx,
+  item: NavItem<ParentMessage>,
+  isActive: boolean,
+): Html => menuItemTrigger(h, ctx, item, isActive)
 
 const groupMenu = <ParentMessage>(
   h: ReturnType<typeof html<ParentMessage>>,
+  ctx: SidebarCtx,
   group: SidebarGroupConfig<ParentMessage>,
-  chevron?: Html,
 ): Html =>
   h.ul(
-    elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.menu)),
+    elAttrs<ParentMessage>(menuStyles(h, ctx)),
     group.items.map(item => {
       if (
         item.subItems !== undefined &&
         item.model !== undefined &&
         item.toParentMessage !== undefined &&
-        chevron !== undefined
+        ctx.chevron !== undefined
       ) {
-        return renderCollapsibleMenuItem(h, group, {
+        return renderCollapsibleMenuItem(h, ctx, group, {
           ...item,
           model: item.model,
           toParentMessage: item.toParentMessage,
           subItems: item.subItems,
-        }, chevron)
+        }, ctx.chevron)
       }
 
       const menuButton = menuItemButton(
         h,
+        ctx,
         item,
         item.id === group.activeItemId,
       )
@@ -242,38 +334,57 @@ const groupMenu = <ParentMessage>(
     }),
   )
 
+const groupStyles = <ParentMessage>(
+  h: ReturnType<typeof html<ParentMessage>>,
+  ctx: SidebarCtx,
+  group: SidebarGroupConfig<ParentMessage>,
+) =>
+  sxAttrs(
+    h,
+    sidebarStyles.group,
+    ctx.isCollapsed && group.hideWhenCollapsed === true
+      ? sidebarStyles.collapseHidden
+      : undefined,
+  )
+
 const staticGroup = <ParentMessage>(
   h: ReturnType<typeof html<ParentMessage>>,
+  ctx: SidebarCtx,
   group: SidebarGroupConfig<ParentMessage>,
-  chevron?: Html,
 ): Html =>
   h.div(
-    elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.group)),
+    elAttrs<ParentMessage>(groupStyles(h, ctx, group)),
     [
       h.div(
-        elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.groupLabel)),
+        elAttrs<ParentMessage>(
+          sxAttrs(
+            h,
+            sidebarStyles.groupLabel,
+            ctx.isCollapsed ? sidebarStyles.groupLabelCollapsed : undefined,
+          ),
+        ),
         [group.label],
       ),
-      groupMenu(h, group, chevron),
+      groupMenu(h, ctx, group),
     ],
   )
 
 const collapsibleGroup = <ParentMessage>(
   h: ReturnType<typeof html<ParentMessage>>,
+  ctx: SidebarCtx,
   group: SidebarGroupConfig<ParentMessage> & {
     model: Disclosure.Model
     toParentMessage: (message: Disclosure.Message) => ParentMessage
   },
-  chevron?: Html,
 ): Html =>
   h.submodel({
-    slotId: group.id,
+    slotId: submodelSlotId(ctx, group.id),
     model: group.model,
     view: Disclosure.view,
     viewInputs: {
       toView: attributes =>
         h.div(
-          elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.group)),
+          elAttrs<ParentMessage>(groupStyles(h, ctx, group)),
           [
             h.button(
               elAttrs<ParentMessage>(
@@ -282,7 +393,13 @@ const collapsibleGroup = <ParentMessage>(
               ),
               [
                 h.span(
-                  elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.groupLabel)),
+                  elAttrs<ParentMessage>(
+                    sxAttrs(
+                      h,
+                      sidebarStyles.groupLabel,
+                      ctx.isCollapsed ? sidebarStyles.groupLabelCollapsed : undefined,
+                    ),
+                  ),
                   [group.label],
                 ),
                 h.span(
@@ -293,15 +410,25 @@ const collapsibleGroup = <ParentMessage>(
                       group.model.isOpen
                         ? sidebarStyles.groupChevronOpen
                         : undefined,
+                      ctx.isCollapsed ? sidebarStyles.collapseHidden : undefined,
                     ),
                   ),
                   ['▾'],
                 ),
               ],
             ),
-            group.model.isOpen
-              ? h.div([...attributes.panel], [groupMenu(h, group, chevron)])
-              : h.empty,
+            h.div(
+              elAttrs<ParentMessage>(
+                sxAttrs(
+                  h,
+                  ctx.isCollapsed || !group.model.isOpen
+                    ? sidebarStyles.collapseHidden
+                    : undefined,
+                ),
+                [...attributes.panel],
+              ),
+              [groupMenu(h, ctx, group)],
+            ),
           ],
         ),
     },
@@ -310,13 +437,14 @@ const collapsibleGroup = <ParentMessage>(
 
 const brandHeader = <ParentMessage>(
   h: ReturnType<typeof html<ParentMessage>>,
+  ctx: SidebarCtx,
   brand: SidebarBrandConfig,
 ): Html =>
   h.div(
     elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.header)),
     [
       h.ul(
-        elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.menu)),
+        elAttrs<ParentMessage>(menuStyles(h, ctx)),
         [
           h.li(
             elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.menuItem)),
@@ -324,14 +452,22 @@ const brandHeader = <ParentMessage>(
               brand.trigger !== undefined
                 ? brand.trigger
                 : h.button(
-                    elAttrs<ParentMessage>(menuButtonStyles(h, false, false, true)),
+                    elAttrs<ParentMessage>(
+                      menuButtonStyles(h, ctx, false, false, true),
+                    ),
                     [
                       h.div(
                         elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.brandLogo)),
                         brand.logo !== undefined ? [brand.logo] : [brand.name.charAt(0)],
                       ),
                       h.div(
-                        elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.brandText)),
+                        elAttrs<ParentMessage>(
+                          sxAttrs(
+                            h,
+                            sidebarStyles.brandText,
+                            ctx.isCollapsed ? sidebarStyles.collapseHidden : undefined,
+                          ),
+                        ),
                         [
                           h.span(
                             elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.brandName)),
@@ -353,7 +489,13 @@ const brandHeader = <ParentMessage>(
                         ? [
                             h.span(
                               elAttrs<ParentMessage>(
-                                sxAttrs(h, sidebarStyles.menuButtonChevron),
+                                sxAttrs(
+                                  h,
+                                  sidebarStyles.menuButtonChevron,
+                                  ctx.isCollapsed
+                                    ? sidebarStyles.collapseHidden
+                                    : undefined,
+                                ),
                               ),
                               [brand.chevron],
                             ),
@@ -370,13 +512,14 @@ const brandHeader = <ParentMessage>(
 
 const footerUser = <ParentMessage>(
   h: ReturnType<typeof html<ParentMessage>>,
+  ctx: SidebarCtx,
   user: SidebarUserConfig,
 ): Html =>
   h.div(
     elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.footer)),
     [
       h.ul(
-        elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.menu)),
+        elAttrs<ParentMessage>(menuStyles(h, ctx)),
         [
           h.li(
             elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.menuItem)),
@@ -384,14 +527,22 @@ const footerUser = <ParentMessage>(
               user.trigger !== undefined
                 ? user.trigger
                 : h.button(
-                    elAttrs<ParentMessage>(menuButtonStyles(h, false, false, true)),
+                    elAttrs<ParentMessage>(
+                      menuButtonStyles(h, ctx, false, false, true),
+                    ),
                     [
                       h.div(
                         elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.userAvatar)),
                         [user.avatarFallback],
                       ),
                       h.div(
-                        elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.brandText)),
+                        elAttrs<ParentMessage>(
+                          sxAttrs(
+                            h,
+                            sidebarStyles.brandText,
+                            ctx.isCollapsed ? sidebarStyles.collapseHidden : undefined,
+                          ),
+                        ),
                         [
                           h.span(
                             elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.brandName)),
@@ -407,7 +558,13 @@ const footerUser = <ParentMessage>(
                         ? [
                             h.span(
                               elAttrs<ParentMessage>(
-                                sxAttrs(h, sidebarStyles.menuButtonChevron),
+                                sxAttrs(
+                                  h,
+                                  sidebarStyles.menuButtonChevron,
+                                  ctx.isCollapsed
+                                    ? sidebarStyles.collapseHidden
+                                    : undefined,
+                                ),
                               ),
                               [user.chevron],
                             ),
@@ -424,7 +581,7 @@ const footerUser = <ParentMessage>(
 
 const navLinks = <ParentMessage>(
   config: SidebarNavConfig<ParentMessage>,
-  chevron?: Html,
+  ctx: SidebarCtx,
 ): Html => {
   const h = html<ParentMessage>()
 
@@ -435,12 +592,12 @@ const navLinks = <ParentMessage>(
         elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.groupListItem)),
         [
           group.model !== undefined && group.toParentMessage !== undefined
-            ? collapsibleGroup(h, {
+            ? collapsibleGroup(h, ctx, {
                 ...group,
                 model: group.model,
                 toParentMessage: group.toParentMessage,
-              }, chevron)
-            : staticGroup(h, group, chevron),
+              })
+            : staticGroup(h, ctx, group),
         ],
       ),
     ),
@@ -449,39 +606,52 @@ const navLinks = <ParentMessage>(
 
 const sidebarBody = <ParentMessage>(
   config: SidebarNavConfig<ParentMessage>,
-  chevron?: Html,
+  ctx: SidebarCtx,
 ): ReadonlyArray<Html> => {
   const h = html<ParentMessage>()
 
   return [
-    brandHeader(h, config.brand),
+    brandHeader(h, ctx, config.brand),
     h.nav(
-      elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.content)),
-      [navLinks(config, chevron)],
+      elAttrs<ParentMessage>(
+        sxAttrs(
+          h,
+          sidebarStyles.content,
+          ctx.isCollapsed ? sidebarStyles.contentCollapsed : undefined,
+        ),
+      ),
+      [navLinks(config, ctx)],
     ),
-    ...(config.user !== undefined ? [footerUser(h, config.user)] : []),
+    ...(config.user !== undefined ? [footerUser(h, ctx, config.user)] : []),
   ]
 }
 
 /** Renders the desktop sidebar column. */
 export const desktop = <ParentMessage>(
   config: SidebarNavConfig<ParentMessage>,
-  options?: Readonly<{ chevron?: Html }>,
+  options?: SidebarOptions,
 ): Html => {
   const h = html<ParentMessage>()
+  const ctx = sidebarCtx(options)
 
   return h.aside(
     elAttrs<ParentMessage>(
       h.AriaLabel('Sidebar'),
-      sxAttrs(h, sidebarStyles.desktop, sidebarStyles.desktopVisible),
+      sxAttrs(
+        h,
+        sidebarStyles.desktop,
+        sidebarStyles.desktopVisible,
+        ctx.isCollapsed ? sidebarStyles.desktopCollapsed : undefined,
+      ),
     ),
-    sidebarBody(config, options?.chevron),
+    sidebarBody(config, ctx),
   )
 }
 
 export type SidebarInsetConfig<ParentMessage> = Readonly<{
   headerChildren: ReadonlyArray<Html>
   children?: Html
+  isCollapsed?: boolean
 }>
 
 /** Renders the main content area beside the sidebar. */
@@ -489,9 +659,16 @@ export const inset = <ParentMessage>(
   config: SidebarInsetConfig<ParentMessage>,
 ): Html => {
   const h = html<ParentMessage>()
+  const isCollapsed = config.isCollapsed === true
 
   return h.main(
-    elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.inset)),
+    elAttrs<ParentMessage>(
+      sxAttrs(
+        h,
+        sidebarStyles.inset,
+        isCollapsed ? sidebarStyles.insetCollapsed : undefined,
+      ),
+    ),
     [
       h.header(
         elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.insetHeader)),
@@ -507,12 +684,12 @@ export const inset = <ParentMessage>(
 /** Renders scrollable sidebar navigation links. */
 export const nav = <ParentMessage>(
   config: SidebarNavConfig<ParentMessage>,
-  options?: Readonly<{ chevron?: Html }>,
+  options?: SidebarOptions,
 ): Html => {
   const h = html<ParentMessage>()
 
   return h.div(
     elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.mobileSheetPanel)),
-    sidebarBody(config, options?.chevron),
+    sidebarBody(config, sidebarCtx(options)),
   )
 }
