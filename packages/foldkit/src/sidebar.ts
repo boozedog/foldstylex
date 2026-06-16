@@ -224,6 +224,8 @@ const renderCollapsibleMenuItem = <ParentMessage>(
                 attributes.button,
                 menuButtonStyles(h, ctx, false),
               ),
+              chevron,
+              item.model.isOpen,
             ),
             h.div(
               elAttrs<ParentMessage>(
@@ -264,6 +266,8 @@ const menuItemTrigger = <ParentMessage>(
       item.action !== undefined,
     ),
   ),
+  chevron?: Html,
+  chevronOpen = false,
 ): Html =>
   item.tooltip !== undefined
     ? StyledTooltip.wrapButton(h, {
@@ -272,11 +276,11 @@ const menuItemTrigger = <ParentMessage>(
         enabled: tooltipEnabled(ctx, item),
         toParentMessage: item.tooltip.toParentMessage,
         triggerAttributes,
-        triggerChildren: menuItemChildren(h, ctx, item),
+        triggerChildren: menuItemChildren(h, ctx, item, chevron, chevronOpen),
       })
     : h.button(
         elAttrs<ParentMessage>(triggerAttributes),
-        menuItemChildren(h, ctx, item),
+        menuItemChildren(h, ctx, item, chevron, chevronOpen),
       )
 
 const menuItemButton = <ParentMessage>(
