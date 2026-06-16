@@ -1,6 +1,7 @@
 import { Runtime } from 'foldkit'
 
 import { overlay } from '@foldkit/devtools'
+import '@foldstylex/styles/sidebar.global.css'
 
 import { Message, Model, init, update, view } from './main'
 

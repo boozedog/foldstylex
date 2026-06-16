@@ -19,6 +19,7 @@ export const sidebarStyles = stylex.create({
     zIndex: 40,
     width: layout.sidebarWidth,
     flexDirection: 'column',
+    fontSize: '1rem',
     backgroundColor: colors.sidebar,
     color: colors.sidebarForeground,
     borderRightWidth: 1,
@@ -84,8 +85,7 @@ export const sidebarStyles = stylex.create({
     paddingInline: '0.5rem',
     fontSize: '0.75rem',
     fontWeight: 500,
-    color: colors.sidebarForeground,
-    opacity: 0.7,
+    color: colors.sidebarForegroundMuted,
     outlineStyle: 'none',
     transitionProperty: 'margin, opacity',
     transitionDuration: '200ms',
@@ -130,6 +130,36 @@ export const sidebarStyles = stylex.create({
   menuItem: {
     position: 'relative',
   },
+  menuItemGroup: {
+    position: 'relative',
+  },
+  menuAction: {
+    position: 'absolute',
+    top: '0.375rem',
+    right: '0.25rem',
+    display: 'flex',
+    aspectRatio: '1',
+    width: '1.25rem',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: layout.radiusMd,
+    padding: 0,
+    color: colors.sidebarForeground,
+    backgroundColor: 'transparent',
+    borderStyle: 'none',
+    cursor: 'pointer',
+    outlineStyle: 'none',
+    pointerEvents: 'auto',
+    transitionProperty: 'opacity, background-color, color',
+    transitionDuration: '150ms',
+    ':hover': {
+      backgroundColor: colors.sidebarAccent,
+      color: colors.sidebarAccentForeground,
+    },
+    ':focus-visible': {
+      boxShadow: `0 0 0 2px ${colors.sidebarRing}`,
+    },
+  },
   menuButton: {
     display: 'flex',
     width: '100%',
@@ -164,12 +194,20 @@ export const sidebarStyles = stylex.create({
     padding: '0.5rem',
     fontSize: '0.875rem',
   },
+  menuButtonInner: {
+    display: 'flex',
+    width: '100%',
+    alignItems: 'center',
+    gap: '0.5rem',
+  },
+  menuButtonWithAction: {
+    paddingRight: '2rem',
+  },
   menuButtonMuted: {
-    color: colors.sidebarForeground,
-    opacity: 0.7,
-    ':hover': {
-      opacity: 1,
-    },
+    color: colors.sidebarForegroundMuted,
+  },
+  menuButtonIconMuted: {
+    color: colors.sidebarForegroundMuted,
   },
   menuButtonActive: {
     backgroundColor: colors.sidebarAccent,
@@ -261,7 +299,7 @@ export const sidebarStyles = stylex.create({
   },
   insetHeader: {
     display: 'flex',
-    height: '3rem',
+    height: '4rem',
     flexShrink: 0,
     alignItems: 'center',
     gap: '0.5rem',
@@ -294,6 +332,7 @@ export const sidebarStyles = stylex.create({
     height: '100%',
     width: layout.sidebarWidthMobile,
     flexDirection: 'column',
+    fontSize: '1rem',
     backgroundColor: colors.sidebar,
     color: colors.sidebarForeground,
   },
@@ -351,7 +390,6 @@ export const sidebarStyles = stylex.create({
   brandSubtitle: {
     fontSize: '0.75rem',
     color: colors.sidebarForeground,
-    opacity: 0.7,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',

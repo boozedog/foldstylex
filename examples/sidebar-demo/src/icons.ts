@@ -140,3 +140,61 @@ export const xMarkIcon = lucideIcon([
   { d: 'M18 6 6 18' },
   { d: 'm6 6 12 12' },
 ])
+
+export const plusIcon = lucideIcon([
+  { d: 'M5 12h14' },
+  { d: 'M12 5v14' },
+])
+
+export const folderIcon = lucideIcon([
+  { d: 'M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z' },
+])
+
+export const forwardIcon = lucideIcon([
+  { d: 'm9 18 6-6-6-6' },
+  { d: 'M3 12h12' },
+])
+
+export const trash2Icon = lucideIcon([
+  { d: 'M3 6h18' },
+  { d: 'M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6' },
+  { d: 'M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2' },
+  { d: 'M10 11v6' },
+  { d: 'M14 11v6' },
+])
+
+export const sparklesIcon = lucideIcon([{ d: 'M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z' }])
+
+export const badgeCheckIcon = lucideIcon([
+  { d: 'M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z' },
+  { d: 'm9 12 2 2 4-4' },
+])
+
+export const creditCardIcon = lucideIcon([
+  { width: '20', height: '14', x: '2', y: '5' },
+  { d: 'M2 10h20' },
+])
+
+export const bellIcon = lucideIcon([
+  { d: 'M10.268 21a2 2 0 0 0 3.464 0' },
+  { d: 'M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326' },
+])
+
+export const logOutIcon = lucideIcon([
+  { d: 'm16 17 5-5-5-5' },
+  { d: 'M21 12H9' },
+  { d: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4' },
+])
+
+export const audioWaveformIcon = lucideIcon([
+  { d: 'M2 13a2 2 0 0 0 2 2h1' },
+  { d: 'M6 21V5a2 2 0 0 1 2-2h1' },
+  { d: 'M10 21V9a2 2 0 0 1 2-2h1' },
+  { d: 'M14 21V7a2 2 0 0 1 2-2h1' },
+  { d: 'M18 21V11a2 2 0 0 1 2-2h1' },
+  { d: 'M22 13a2 2 0 0 0-2-2h-1' },
+])
+
+export const commandIcon = lucideIcon([
+  { d: 'M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3' },
+])

@@ -23,6 +23,10 @@ export const colors = stylex.defineVars({
   ring: lightDark('oklch(0.708 0 0)', 'oklch(0.556 0 0)'),
   sidebar: lightDark('oklch(0.985 0 0)', 'oklch(0.205 0 0)'),
   sidebarForeground: lightDark('oklch(0.145 0 0)', 'oklch(0.985 0 0)'),
+  sidebarForegroundMuted: lightDark(
+    'oklch(0.145 0 0 / 0.7)',
+    'oklch(0.985 0 0 / 0.7)',
+  ),
   sidebarPrimary: lightDark('oklch(0.205 0 0)', 'oklch(0.488 0.243 264.376)'),
   sidebarPrimaryForeground: lightDark('oklch(0.985 0 0)', 'oklch(0.985 0 0)'),
   sidebarAccent: lightDark('oklch(0.97 0 0)', 'oklch(0.269 0 0)'),

@@ -1,4 +1,6 @@
+export * as Avatar from './avatar.js'
 export * as Button from './button.js'
+export * as DropdownMenu from './dropdownMenu.js'
 export * as Separator from './separator.js'
 export * as Sidebar from './sidebar.js'
 export { attrs, elAttrs, sxAttrs, type ElementAttribute } from './sx.js'

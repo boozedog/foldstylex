@@ -18,6 +18,7 @@ export type NavItem<ParentMessage> = Readonly<{
   icon?: Html
   onClick?: ParentMessage
   muted?: boolean
+  action?: Html
   subItems?: ReadonlyArray<SubNavItem<ParentMessage>>
   model?: Disclosure.Model
   toParentMessage?: (message: Disclosure.Message) => ParentMessage
@@ -38,6 +39,7 @@ export type SidebarBrandConfig = Readonly<{
   subtitle?: string
   logo?: Html
   chevron?: Html
+  trigger?: Html
 }>
 
 export type SidebarUserConfig = Readonly<{
@@ -45,6 +47,7 @@ export type SidebarUserConfig = Readonly<{
   email: string
   avatarFallback: string
   chevron?: Html
+  trigger?: Html
 }>
 
 export type SidebarNavConfig<ParentMessage> = Readonly<{
@@ -58,12 +61,14 @@ const menuButtonStyles = <ParentMessage>(
   isActive: boolean,
   muted = false,
   large = false,
+  withAction = false,
 ) =>
   sxAttrs(
     h,
     sidebarStyles.menuButton,
     large ? sidebarStyles.menuButtonLg : undefined,
     muted ? sidebarStyles.menuButtonMuted : undefined,
+    withAction ? sidebarStyles.menuButtonWithAction : undefined,
     isActive ? sidebarStyles.menuButtonActive : undefined,
   )
 
@@ -76,7 +81,13 @@ const menuItemChildren = <ParentMessage>(
   ...(item.icon !== undefined
     ? [
         h.span(
-          elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.menuButtonIcon)),
+          elAttrs<ParentMessage>(
+            sxAttrs(
+              h,
+              sidebarStyles.menuButtonIcon,
+              item.muted === true ? sidebarStyles.menuButtonIconMuted : undefined,
+            ),
+          ),
           [item.icon],
         ),
       ]
@@ -173,7 +184,13 @@ const menuItemButton = <ParentMessage>(
   h.button(
     elAttrs<ParentMessage>(
       ...(item.onClick !== undefined ? [h.OnClick(item.onClick)] : []),
-      menuButtonStyles(h, isActive, item.muted === true),
+      menuButtonStyles(
+        h,
+        isActive,
+        item.muted === true,
+        false,
+        item.action !== undefined,
+      ),
     ),
     menuItemChildren(h, item),
   )
@@ -200,14 +217,26 @@ const groupMenu = <ParentMessage>(
         }, chevron)
       }
 
+      const menuButton = menuItemButton(
+        h,
+        item,
+        item.id === group.activeItemId,
+      )
+
       return h.li(
-        elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.menuItem)),
-        [
-          menuItemButton(
+        elAttrs<ParentMessage>(
+          ...(item.action !== undefined
+            ? [h.DataAttribute('foldstylex-sidebar-menu-item', 'true')]
+            : []),
+          sxAttrs(
             h,
-            item,
-            item.id === group.activeItemId,
+            sidebarStyles.menuItem,
+            item.action !== undefined ? sidebarStyles.menuItemGroup : undefined,
           ),
+        ),
+        [
+          menuButton,
+          ...(item.action !== undefined ? [item.action] : []),
         ],
       )
     }),
@@ -292,44 +321,46 @@ const brandHeader = <ParentMessage>(
           h.li(
             elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.menuItem)),
             [
-              h.button(
-                elAttrs<ParentMessage>(menuButtonStyles(h, false, false, true)),
-                [
-                  h.div(
-                    elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.brandLogo)),
-                    brand.logo !== undefined ? [brand.logo] : [brand.name.charAt(0)],
-                  ),
-                  h.div(
-                    elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.brandText)),
+              brand.trigger !== undefined
+                ? brand.trigger
+                : h.button(
+                    elAttrs<ParentMessage>(menuButtonStyles(h, false, false, true)),
                     [
-                      h.span(
-                        elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.brandName)),
-                        [brand.name],
+                      h.div(
+                        elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.brandLogo)),
+                        brand.logo !== undefined ? [brand.logo] : [brand.name.charAt(0)],
                       ),
-                      ...(brand.subtitle !== undefined
+                      h.div(
+                        elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.brandText)),
+                        [
+                          h.span(
+                            elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.brandName)),
+                            [brand.name],
+                          ),
+                          ...(brand.subtitle !== undefined
+                            ? [
+                                h.span(
+                                  elAttrs<ParentMessage>(
+                                    sxAttrs(h, sidebarStyles.brandSubtitle),
+                                  ),
+                                  [brand.subtitle],
+                                ),
+                              ]
+                            : []),
+                        ],
+                      ),
+                      ...(brand.chevron !== undefined
                         ? [
                             h.span(
                               elAttrs<ParentMessage>(
-                                sxAttrs(h, sidebarStyles.brandSubtitle),
+                                sxAttrs(h, sidebarStyles.menuButtonChevron),
                               ),
-                              [brand.subtitle],
+                              [brand.chevron],
                             ),
                           ]
                         : []),
                     ],
                   ),
-                  ...(brand.chevron !== undefined
-                    ? [
-                        h.span(
-                          elAttrs<ParentMessage>(
-                            sxAttrs(h, sidebarStyles.menuButtonChevron),
-                          ),
-                          [brand.chevron],
-                        ),
-                      ]
-                    : []),
-                ],
-              ),
             ],
           ),
         ],
@@ -350,38 +381,40 @@ const footerUser = <ParentMessage>(
           h.li(
             elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.menuItem)),
             [
-              h.button(
-                elAttrs<ParentMessage>(menuButtonStyles(h, false, false, true)),
-                [
-                  h.div(
-                    elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.userAvatar)),
-                    [user.avatarFallback],
-                  ),
-                  h.div(
-                    elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.brandText)),
+              user.trigger !== undefined
+                ? user.trigger
+                : h.button(
+                    elAttrs<ParentMessage>(menuButtonStyles(h, false, false, true)),
                     [
-                      h.span(
-                        elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.brandName)),
-                        [user.name],
+                      h.div(
+                        elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.userAvatar)),
+                        [user.avatarFallback],
                       ),
-                      h.span(
-                        elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.brandSubtitle)),
-                        [user.email],
+                      h.div(
+                        elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.brandText)),
+                        [
+                          h.span(
+                            elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.brandName)),
+                            [user.name],
+                          ),
+                          h.span(
+                            elAttrs<ParentMessage>(sxAttrs(h, sidebarStyles.brandSubtitle)),
+                            [user.email],
+                          ),
+                        ],
                       ),
+                      ...(user.chevron !== undefined
+                        ? [
+                            h.span(
+                              elAttrs<ParentMessage>(
+                                sxAttrs(h, sidebarStyles.menuButtonChevron),
+                              ),
+                              [user.chevron],
+                            ),
+                          ]
+                        : []),
                     ],
                   ),
-                  ...(user.chevron !== undefined
-                    ? [
-                        h.span(
-                          elAttrs<ParentMessage>(
-                            sxAttrs(h, sidebarStyles.menuButtonChevron),
-                          ),
-                          [user.chevron],
-                        ),
-                      ]
-                    : []),
-                ],
-              ),
             ],
           ),
         ],

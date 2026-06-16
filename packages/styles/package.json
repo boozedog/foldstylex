@@ -4,7 +4,8 @@
   "description": "shadcn component styles for StyleX",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./sidebar.global.css": "./src/sidebar.global.css"
   },
   "dependencies": {
     "@foldstylex/tokens": "workspace:*",
