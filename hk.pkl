@@ -1,0 +1,21 @@
+amends "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Builtins.pkl"
+
+local linters = new Mapping<String, Step> {
+  ["typecheck"] {
+    glob = List("**/*.ts", "**/*.tsx")
+    exclude = List("**/node_modules/**", "**/dist/**")
+    check = "pnpm typecheck"
+  }
+}
+
+hooks {
+  ["pre-commit"] {
+    fix = false
+    stash = "git"
+    steps = linters
+  }
+  ["check"] {
+    steps = linters
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "foldstylex-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@10.33.4",
+  "description": "shadcn-inspired styling for Foldkit, powered by StyleX",
+  "engines": {
+    "node": ">=20.19.0 || >=22.12.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter sidebar-demo dev",
+    "build": "pnpm -r --if-present build",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "check": "hk run check",
+    "prepare": "effect-language-service patch"
+  },
+  "devDependencies": {
+    "@effect/language-service": "^0.86.2",
+    "typescript": "^6.0.3"
+  }
+}

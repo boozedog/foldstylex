@@ -1,0 +1,20 @@
+[tools]
+pnpm = "10.33.4"
+hk = "latest"
+pkl = "latest"
+
+[tasks.typecheck]
+description = "Typecheck all workspace packages"
+run = "pnpm typecheck"
+
+[tasks.check]
+description = "Run hk check hook (typecheck)"
+run = "hk run check"
+
+[tasks.pre-commit]
+description = "Run pre-commit hooks"
+run = "hk run pre-commit"
+
+[tasks.dev]
+description = "Start the sidebar demo dev server"
+run = "pnpm dev"

@@ -1,0 +1,28 @@
+{
+  "name": "@foldstylex/foldkit",
+  "version": "0.0.1",
+  "description": "shadcn-styled Foldkit view helpers",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@foldstylex/styles": "workspace:*",
+    "@foldstylex/tokens": "workspace:*",
+    "@stylexjs/stylex": "^0.19.0"
+  },
+  "peerDependencies": {
+    "@foldkit/ui": ">=0.113.0",
+    "effect": ">=4.0.0-beta.83",
+    "foldkit": ">=0.113.0"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@foldkit/ui": "^0.113.0",
+    "effect": "4.0.0-beta.83",
+    "foldkit": "^0.113.0",
+    "typescript": "^6.0.3"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "@foldstylex/tokens",
+  "version": "0.0.1",
+  "description": "shadcn semantic design tokens for StyleX",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./colors.stylex.ts": "./src/colors.stylex.ts",
+    "./layout.stylex.ts": "./src/layout.stylex.ts"
+  },
+  "dependencies": {
+    "@stylexjs/stylex": "^0.19.0"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}
