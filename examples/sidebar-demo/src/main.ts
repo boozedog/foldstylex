@@ -1048,7 +1048,7 @@ export const view = (model: Model): Document => {
         Sidebar.inset({
           children: kitchenSink.view(model),
           isCollapsed,
-          isContentLocked: model.appMenu.isOpen,
+          isContentLocked: model.appMenu.isOpen || model.appMenu.isDragging,
           headerChildren: [
             h.div(
               elAttrs<Message>(sxAttrs(h, sidebarStyles.insetHeaderInner)),

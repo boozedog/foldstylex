@@ -13,6 +13,12 @@ export const appMenuStyles = stylex.create({
   hostInteractive: {
     pointerEvents: 'auto',
   },
+  hostClosed: {
+    pointerEvents: 'none',
+  },
+  hostDragging: {
+    pointerEvents: 'auto',
+  },
   backdrop: {
     position: 'fixed',
     inset: 0,
@@ -24,6 +30,9 @@ export const appMenuStyles = stylex.create({
   },
   backdropVisible: {
     opacity: 1,
+  },
+  backdropDragging: {
+    transitionProperty: 'none',
   },
   panel: {
     position: 'fixed',
@@ -50,6 +59,9 @@ export const appMenuStyles = stylex.create({
   },
   panelOpen: {
     transform: 'translateX(0)',
+  },
+  panelDragging: {
+    transitionProperty: 'none',
   },
   panelHeader: {
     display: 'flex',
