@@ -7,6 +7,7 @@ import { evo } from 'foldkit/struct'
 
 import { Dialog, Disclosure, Menu, Tabs as UiTabs, Tooltip } from '@foldkit/ui'
 import {
+  AppMenu,
   Avatar,
   Checkbox,
   DropdownMenu,
@@ -17,7 +18,7 @@ import {
   Tooltip as SidebarTooltip,
   sxAttrs,
 } from '@foldstylex/foldkit'
-import { buttonStyles, globalStyles, sidebarStyles } from '@foldstylex/styles'
+import { globalStyles, sidebarStyles } from '@foldstylex/styles'
 
 import * as kitchenSink from './kitchenSink.js'
 
@@ -128,7 +129,7 @@ export const Model = S.Struct({
   projectMenuDesign: Menu.Model,
   projectMenuSales: Menu.Model,
   projectMenuTravel: Menu.Model,
-  mobileMenuDialog: Dialog.Model,
+  appMenu: AppMenu.Model,
   emailValue: S.String,
   sidebarOpen: S.Boolean,
   sidebarTooltips: S.Struct({
@@ -170,8 +171,8 @@ export const GotProjectMenuMessage = m('GotProjectMenuMessage', {
 export const ClickedOpenMobileMenu = m('ClickedOpenMobileMenu')
 export const ClickedSidebarTrigger = m('ClickedSidebarTrigger')
 export const ClickedInertSubItem = m('ClickedInertSubItem')
-export const GotMobileMenuDialogMessage = m('GotMobileMenuDialogMessage', {
-  message: Dialog.Message,
+export const GotAppMenuMessage = m('GotAppMenuMessage', {
+  message: AppMenu.Message,
 })
 export const GotSidebarTooltipMessage = m('GotSidebarTooltipMessage', {
   id: S.Literals(PLATFORM_TOOLTIP_IDS),
@@ -188,7 +189,7 @@ export const Message = S.Union([
   ClickedOpenMobileMenu,
   ClickedSidebarTrigger,
   ClickedInertSubItem,
-  GotMobileMenuDialogMessage,
+  GotAppMenuMessage,
   GotSidebarTooltipMessage,
   kitchenSink.UpdatedEmailValue,
   kitchenSink.ClickedOpenKitchenDialog,
@@ -277,19 +278,17 @@ const withSidebarTooltip = (
     }),
   })
 
-const closeMobileMenu = (
+const closeAppMenu = (
   model: Model,
 ): readonly [Model, ReadonlyArray<Command.Command<Message>>] => {
-  const [nextMobileMenuDialog, mobileMenuDialogCommands] = Dialog.close(
-    model.mobileMenuDialog,
-  )
+  const [nextAppMenu, appMenuCommands] = AppMenu.close(model.appMenu)
 
   return [
     evo(model, {
-      mobileMenuDialog: () => nextMobileMenuDialog,
+      appMenu: () => nextAppMenu,
     }),
-    Command.mapMessages(mobileMenuDialogCommands, dialogMessage =>
-      GotMobileMenuDialogMessage({ message: dialogMessage }),
+    Command.mapMessages(appMenuCommands, menuMessage =>
+      GotAppMenuMessage({ message: menuMessage }),
     ),
   ]
 }
@@ -304,19 +303,19 @@ export const update = (
     >(),
     M.tagsExhaustive({
       ClickedProject: ({ id }) => {
-        const [nextModel, mobileCommands] = closeMobileMenu(
+        const [nextModel, appMenuCommands] = closeAppMenu(
           evo(model, { activeProject: () => id }),
         )
 
-        return [nextModel, mobileCommands]
+        return [nextModel, appMenuCommands]
       },
 
       ClickedPlaygroundSub: ({ id }) => {
-        const [nextModel, mobileCommands] = closeMobileMenu(
+        const [nextModel, appMenuCommands] = closeAppMenu(
           evo(model, { activePlaygroundSub: () => id }),
         )
 
-        return [nextModel, mobileCommands]
+        return [nextModel, appMenuCommands]
       },
 
       ClickedSidebarTrigger: () => [
@@ -324,7 +323,7 @@ export const update = (
         [],
       ],
 
-      ClickedInertSubItem: () => closeMobileMenu(model),
+      ClickedInertSubItem: () => closeAppMenu(model),
 
       GotPlatformDisclosureMessage: ({ id, message: disclosureMessage }) => {
         const [nextDisclosure, disclosureCommands] = Disclosure.update(
@@ -403,32 +402,30 @@ export const update = (
       },
 
       ClickedOpenMobileMenu: () => {
-        const [nextMobileMenuDialog, mobileMenuDialogCommands] = Dialog.open(
-          model.mobileMenuDialog,
-        )
+        const [nextAppMenu, appMenuCommands] = AppMenu.open(model.appMenu)
 
         return [
           evo(model, {
-            mobileMenuDialog: () => nextMobileMenuDialog,
+            appMenu: () => nextAppMenu,
           }),
-          Command.mapMessages(mobileMenuDialogCommands, dialogMessage =>
-            GotMobileMenuDialogMessage({ message: dialogMessage }),
+          Command.mapMessages(appMenuCommands, menuMessage =>
+            GotAppMenuMessage({ message: menuMessage }),
           ),
         ]
       },
 
-      GotMobileMenuDialogMessage: ({ message: dialogMessage }) => {
-        const [nextMobileMenuDialog, mobileMenuDialogCommands] = Dialog.update(
-          model.mobileMenuDialog,
-          dialogMessage,
+      GotAppMenuMessage: ({ message: menuMessage }) => {
+        const [nextAppMenu, appMenuCommands] = AppMenu.update(
+          model.appMenu,
+          menuMessage,
         )
 
         return [
           evo(model, {
-            mobileMenuDialog: () => nextMobileMenuDialog,
+            appMenu: () => nextAppMenu,
           }),
-          Command.mapMessages(mobileMenuDialogCommands, message =>
-            GotMobileMenuDialogMessage({ message }),
+          Command.mapMessages(appMenuCommands, message =>
+            GotAppMenuMessage({ message }),
           ),
         ]
       },
@@ -606,7 +603,7 @@ export const init: Runtime.ApplicationInit<Model, Message> = () => [
       id: 'project-menu-travel',
       isAnimated: true,
     }),
-    mobileMenuDialog: Dialog.init({ id: 'mobile-menu' }),
+    appMenu: AppMenu.init({ id: 'app-menu' }),
     emailValue: '',
     sidebarOpen: true,
     sidebarTooltips: {
@@ -1027,53 +1024,18 @@ export const view = (model: Model): Document => {
     slotPrefix: 'mobile',
   }
 
-  const mobileMenu = h.submodel({
-    slotId: model.mobileMenuDialog.id,
-    model: model.mobileMenuDialog,
-    view: Dialog.view,
-    viewInputs: {
-      toView: ({ dialog, backdrop, panel, closeButton, isVisible }) =>
-        h.dialog(
-          elAttrs<Message>(dialog, sxAttrs(h, sidebarStyles.mobileOnly)),
-          isVisible
-            ? [
-                h.div(
-                  elAttrs<Message>(backdrop, sxAttrs(h, sidebarStyles.mobileOverlay)),
-                  [],
-                ),
-                h.div(
-                  [...panel],
-                  [
-                    h.div(
-                      elAttrs<Message>(sxAttrs(h, sidebarStyles.mobileSheet)),
-                      [
-                        h.div(
-                          elAttrs<Message>(sxAttrs(h, sidebarStyles.mobileSheetHeader)),
-                          [
-                            h.button(
-                              elAttrs<Message>(
-                                closeButton,
-                                sxAttrs(
-                                  h,
-                                  sidebarStyles.menuButton,
-                                  buttonStyles.sizeIcon,
-                                ),
-                                h.AriaLabel('Close menu'),
-                              ),
-                              [xMarkIcon],
-                            ),
-                          ],
-                        ),
-                        Sidebar.nav(mobileNavigation, mobileSidebarOptions),
-                      ],
-                    ),
-                  ],
-                ),
-              ]
-            : [],
-        ),
-    },
-    toParentMessage: message => GotMobileMenuDialogMessage({ message }),
+  const appMenu = h.submodel({
+    slotId: model.appMenu.id,
+    model: model.appMenu,
+    view: AppMenu.view,
+    viewInputs: AppMenu.styledViewInputs({
+      ariaLabel: 'Navigation menu',
+      showClose: true,
+      closeButton: xMarkIcon,
+      renderContent: () =>
+        Sidebar.nav(mobileNavigation, mobileSidebarOptions),
+    }),
+    toParentMessage: message => GotAppMenuMessage({ message }),
   })
 
   return {
@@ -1082,10 +1044,11 @@ export const view = (model: Model): Document => {
       elAttrs<Message>(sxAttrs(h, globalStyles.root, sidebarStyles.shell)),
       [
         Sidebar.desktop(desktopNavigation, sidebarOptions),
-        mobileMenu,
+        appMenu,
         Sidebar.inset({
           children: kitchenSink.view(model),
           isCollapsed,
+          isContentLocked: model.appMenu.isOpen,
           headerChildren: [
             h.div(
               elAttrs<Message>(sxAttrs(h, sidebarStyles.insetHeaderInner)),

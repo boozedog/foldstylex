@@ -3,7 +3,7 @@ import type { Model as TooltipModel, Message as TooltipMessage } from '@foldkit/
 import type { Html } from 'foldkit/html'
 import { html } from 'foldkit/html'
 
-import { sidebarStyles } from '@foldstylex/styles'
+import { appMenuStyles, sidebarStyles } from '@foldstylex/styles'
 
 import { elAttrs, sxAttrs } from './sx.js'
 import * as StyledTooltip from './tooltip.js'
@@ -656,6 +656,8 @@ export type SidebarInsetConfig<ParentMessage> = Readonly<{
   headerChildren: ReadonlyArray<Html>
   children?: Html
   isCollapsed?: boolean
+  /** Locks scroll and pointer events on main content while an overlay menu is open. */
+  isContentLocked?: boolean
 }>
 
 /** Renders the main content area beside the sidebar. */
@@ -664,6 +666,7 @@ export const inset = <ParentMessage>(
 ): Html => {
   const h = html<ParentMessage>()
   const isCollapsed = config.isCollapsed === true
+  const isContentLocked = config.isContentLocked === true
 
   return h.main(
     elAttrs<ParentMessage>(
@@ -671,7 +674,9 @@ export const inset = <ParentMessage>(
         h,
         sidebarStyles.inset,
         isCollapsed ? sidebarStyles.insetCollapsed : undefined,
+        isContentLocked ? appMenuStyles.contentLocked : undefined,
       ),
+      ...(isContentLocked ? [h.AriaHidden(true)] : []),
     ),
     [
       h.header(

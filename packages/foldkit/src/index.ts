@@ -1,3 +1,4 @@
+export * as AppMenu from './appMenu.js'
 export * as Avatar from './avatar.js'
 export * as Badge from './badge.js'
 export * as Button from './button.js'

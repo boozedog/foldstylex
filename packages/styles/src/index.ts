@@ -1,3 +1,4 @@
+export { appMenuStyles } from './appMenu.stylex'
 export { avatarStyles } from './avatar.stylex'
 export { badgeStyles } from './badge.stylex'
 export { buttonStyles } from './button.stylex'
