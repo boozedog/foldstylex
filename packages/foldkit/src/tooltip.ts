@@ -38,7 +38,7 @@ type SidebarTooltipViewInputs = TooltipViewInputs &
   }>
 
 /** Like Foldkit `Tooltip.view`, but leaves the trigger alone when `enabled` is false. */
-const sidebarTooltipView = defineView<
+export const view = defineView<
   TooltipModel,
   TooltipMessage,
   SidebarTooltipViewInputs
@@ -120,7 +120,7 @@ export const wrapButton = <ParentMessage>(
   h.submodel({
     slotId: config.model.id,
     model: config.model,
-    view: sidebarTooltipView,
+    view,
     viewInputs: {
       anchor: sidebarAnchor,
       enabled: config.enabled,

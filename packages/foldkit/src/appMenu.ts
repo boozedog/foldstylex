@@ -9,6 +9,16 @@ import { defineView } from 'foldkit/submodel'
 
 import { appMenuStyles } from '@foldstylex/styles'
 
+import {
+  type AppMenuSide,
+  checkEdgeSide,
+  computeDelta,
+  GESTURE_THRESHOLD,
+  isOpeningFromEdge,
+  resolveGestureDispatch,
+  shouldCompleteGesture,
+  shouldOpenAfterGesture,
+} from './appMenuGesture.js'
 import { elAttrs, sxAttrs } from './sx.js'
 
 // MODEL
@@ -65,8 +75,14 @@ export const update = (
   M.value(message).pipe(
     M.withReturnType<readonly [Model, ReadonlyArray<Command<Message>>]>(),
     M.tagsExhaustive({
-      RequestedOpen: () => [evo(model, { isOpen: () => true }), []],
-      RequestedClose: () => [evo(model, { isOpen: () => false }), []],
+      RequestedOpen: () => [
+        evo(model, { isOpen: () => true, isDragging: () => false }),
+        [],
+      ],
+      RequestedClose: () => [
+        evo(model, { isOpen: () => false, isDragging: () => false }),
+        [],
+      ],
       StartedSwipe: () => [evo(model, { isDragging: () => true }), []],
       EndedSwipe: () => [evo(model, { isDragging: () => false }), []],
     }),
@@ -91,35 +107,25 @@ export const toggle = (
 
 const PANEL_SELECTOR = '[data-app-menu-panel]'
 const BACKDROP_SELECTOR = '[data-app-menu-backdrop]'
-const GESTURE_THRESHOLD = 10
+const INTERACTIVE_SELECTOR =
+  'button, a, input, textarea, select, label, summary, [role="button"], [role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]'
 const IOS_EASING = 'cubic-bezier(0.32, 0.72, 0, 1)'
+const GESTURE_TRANSITION_MS = 300
 
 const isMobileViewport = (): boolean =>
   window.matchMedia('(max-width: 767px)').matches
 
 const isEndSide = (side: AppMenuSide): boolean => side === 'end'
 
-const checkEdgeSide = (
-  posX: number,
-  side: AppMenuSide,
-  maxEdgeStart: number,
-): boolean => {
-  if (isEndSide(side)) {
-    return posX >= window.innerWidth - maxEdgeStart
-  }
-  return posX <= maxEdgeStart
-}
-
-const computeDelta = (
-  deltaX: number,
-  isOpen: boolean,
-  side: AppMenuSide,
-): number => {
-  const end = isEndSide(side)
-  return Math.max(0, isOpen !== end ? -deltaX : deltaX)
-}
-
 const readIsOpen = (host: Element): boolean => host.hasAttribute('data-open')
+
+const isInteractivePointerTarget = (target: EventTarget | null): boolean => {
+  if (!(target instanceof Element)) {
+    return false
+  }
+
+  return target.closest(INTERACTIVE_SELECTOR) !== null
+}
 
 const applyGestureStyles = (
   panel: HTMLElement,
@@ -142,9 +148,15 @@ const applyGestureStyles = (
 }
 
 const clearGestureStyles = (panel: HTMLElement, backdrop: HTMLElement): void => {
+  panel.style.removeProperty('transition')
   panel.style.removeProperty('transition-property')
+  panel.style.removeProperty('transition-duration')
+  panel.style.removeProperty('transition-timing-function')
   panel.style.removeProperty('transform')
+  backdrop.style.removeProperty('transition')
   backdrop.style.removeProperty('transition-property')
+  backdrop.style.removeProperty('transition-duration')
+  backdrop.style.removeProperty('transition-timing-function')
   backdrop.style.removeProperty('opacity')
 }
 
@@ -153,12 +165,12 @@ const animateGestureFinish = (
   backdrop: HTMLElement,
   side: AppMenuSide,
   shouldOpen: boolean,
-): void => {
+): (() => void) => {
   panel.style.transitionProperty = 'transform'
-  panel.style.transitionDuration = '300ms'
+  panel.style.transitionDuration = `${GESTURE_TRANSITION_MS}ms`
   panel.style.transitionTimingFunction = IOS_EASING
   backdrop.style.transitionProperty = 'opacity'
-  backdrop.style.transitionDuration = '300ms'
+  backdrop.style.transitionDuration = `${GESTURE_TRANSITION_MS}ms`
   backdrop.style.transitionTimingFunction = IOS_EASING
 
   if (isEndSide(side)) {
@@ -169,50 +181,34 @@ const animateGestureFinish = (
 
   backdrop.style.opacity = shouldOpen ? '0.25' : '0'
 
+  let cleared = false
+  const finishCleanup = (): void => {
+    if (cleared) {
+      return
+    }
+    cleared = true
+    panel.removeEventListener('transitionend', onTransitionEnd)
+    backdrop.removeEventListener('transitionend', onTransitionEnd)
+    clearTimeout(fallbackTimer)
+    clearGestureStyles(panel, backdrop)
+  }
+
   const onTransitionEnd = (event: TransitionEvent): void => {
     if (event.target !== panel && event.target !== backdrop) {
       return
     }
-    panel.removeEventListener('transitionend', onTransitionEnd)
-    backdrop.removeEventListener('transitionend', onTransitionEnd)
-    clearGestureStyles(panel, backdrop)
+    finishCleanup()
   }
+
+  const fallbackTimer = window.setTimeout(
+    finishCleanup,
+    GESTURE_TRANSITION_MS + 50,
+  )
 
   panel.addEventListener('transitionend', onTransitionEnd)
   backdrop.addEventListener('transitionend', onTransitionEnd)
-}
 
-const shouldCompleteGesture = (
-  deltaX: number,
-  delta: number,
-  width: number,
-  velocityX: number,
-  isOpen: boolean,
-  side: AppMenuSide,
-): boolean => {
-  const z = width / 2
-  const shouldCompleteRight =
-    velocityX >= 0 && (velocityX > 0.2 || deltaX > z)
-  const shouldCompleteLeft =
-    velocityX <= 0 && (velocityX < -0.2 || deltaX < -z)
-
-  if (isOpen) {
-    return isEndSide(side) ? shouldCompleteRight : shouldCompleteLeft
-  }
-  return isEndSide(side) ? shouldCompleteLeft : shouldCompleteRight
-}
-
-const shouldOpenAfterGesture = (
-  isOpenAtStart: boolean,
-  shouldComplete: boolean,
-): boolean => {
-  if (!isOpenAtStart && shouldComplete) {
-    return true
-  }
-  if (isOpenAtStart && !shouldComplete) {
-    return true
-  }
-  return false
+  return finishCleanup
 }
 
 export const SwipeEdgeMenu = Mount.defineStream(
@@ -232,6 +228,8 @@ export const SwipeEdgeMenu = Mount.defineStream(
       yield* Effect.acquireRelease(
         Effect.sync(() => {
           const doc = document
+          const listenerOptions = { capture: true }
+          const moveListenerOptions = { capture: true, passive: false }
           let active = false
           let started = false
           let isOpenAtStart = false
@@ -241,14 +239,31 @@ export const SwipeEdgeMenu = Mount.defineStream(
           let lastTime = 0
           let panel: HTMLElement | undefined
           let backdrop: HTMLElement | undefined
+          let cancelFinishAnimation: (() => void) | undefined
 
-          const resetGesture = (): void => {
+          const cancelPendingFinish = (): void => {
+            cancelFinishAnimation?.()
+            cancelFinishAnimation = undefined
+          }
+
+          const releaseGesture = (offerEndedSwipe: boolean): void => {
+            if (started && offerEndedSwipe) {
+              Queue.offerUnsafe(queue, EndedSwipe())
+            }
+
+            cancelPendingFinish()
+            hostElement.removeAttribute('data-dragging')
+            doc.body.style.removeProperty('overflow')
+
+            if (panel !== undefined && backdrop !== undefined) {
+              clearGestureStyles(panel, backdrop)
+            }
+
             active = false
             started = false
             isOpenAtStart = false
             panel = undefined
             backdrop = undefined
-            doc.body.style.removeProperty('overflow')
           }
 
           const canStart = (clientX: number): boolean => {
@@ -260,13 +275,31 @@ export const SwipeEdgeMenu = Mount.defineStream(
             if (isOpen) {
               return true
             }
-            return checkEdgeSide(clientX, side, maxEdgeStart)
+            return checkEdgeSide(
+              clientX,
+              side,
+              maxEdgeStart,
+              window.innerWidth,
+            )
           }
 
           const onPointerDown = (event: PointerEvent): void => {
             if (event.button !== 0 || !canStart(event.clientX)) {
               return
             }
+
+            if (readIsOpen(hostElement) && isInteractivePointerTarget(event.target)) {
+              // Mirror backdrop-tap cleanup: stale finish animations from a prior
+              // swipe can otherwise outlive an ×-button close.
+              cancelPendingFinish()
+              return
+            }
+
+            if (active) {
+              releaseGesture(true)
+            }
+
+            cancelPendingFinish()
 
             const panelEl = hostElement.querySelector(PANEL_SELECTOR)
             const backdropEl = hostElement.querySelector(BACKDROP_SELECTOR)
@@ -304,7 +337,7 @@ export const SwipeEdgeMenu = Mount.defineStream(
                 return
               }
               if (Math.abs(deltaY) > Math.abs(deltaX)) {
-                resetGesture()
+                releaseGesture(started)
                 return
               }
 
@@ -334,11 +367,8 @@ export const SwipeEdgeMenu = Mount.defineStream(
               return
             }
 
-            hostElement.removeAttribute('data-dragging')
-            doc.body.style.removeProperty('overflow')
-
             if (!started) {
-              resetGesture()
+              releaseGesture(false)
               return
             }
 
@@ -358,29 +388,83 @@ export const SwipeEdgeMenu = Mount.defineStream(
             )
             const shouldOpen = shouldOpenAfterGesture(isOpenAtStart, shouldComplete)
 
-            animateGestureFinish(panel, backdrop, side, shouldOpen)
-            Queue.offerUnsafe(queue, EndedSwipe())
-            Queue.offerUnsafe(
-              queue,
-              shouldOpen
-                ? RequestedOpen({ role: 'gesture' })
-                : RequestedClose({ role: 'gesture' }),
+            cancelPendingFinish()
+            cancelFinishAnimation = animateGestureFinish(
+              panel,
+              backdrop,
+              side,
+              shouldOpen,
             )
-            resetGesture()
-          }
+            Queue.offerUnsafe(queue, EndedSwipe())
 
-          doc.addEventListener('pointerdown', onPointerDown)
-          doc.addEventListener('pointermove', onPointerMove, { passive: false })
-          doc.addEventListener('pointerup', onPointerEnd)
-          doc.addEventListener('pointercancel', onPointerEnd)
+            const isOpenNow = readIsOpen(hostElement)
+            const edgeOpen = isOpeningFromEdge(
+              startX,
+              deltaX,
+              side,
+              maxEdgeStart,
+              shouldOpen,
+              window.innerWidth,
+            )
+            const dispatch = resolveGestureDispatch(
+              shouldOpen,
+              isOpenNow,
+              edgeOpen,
+            )
+            if (dispatch === 'open') {
+              Queue.offerUnsafe(queue, RequestedOpen({ role: 'gesture' }))
+            } else if (dispatch === 'close') {
+              Queue.offerUnsafe(queue, RequestedClose({ role: 'gesture' }))
+            }
 
-          return () => {
-            doc.removeEventListener('pointerdown', onPointerDown)
-            doc.removeEventListener('pointermove', onPointerMove)
-            doc.removeEventListener('pointerup', onPointerEnd)
-            doc.removeEventListener('pointercancel', onPointerEnd)
+            active = false
+            started = false
+            isOpenAtStart = false
+            panel = undefined
+            backdrop = undefined
             hostElement.removeAttribute('data-dragging')
             doc.body.style.removeProperty('overflow')
+          }
+
+          const syncGestureStylesToModel = (): void => {
+            cancelPendingFinish()
+
+            const panelEl = hostElement.querySelector(PANEL_SELECTOR)
+            const backdropEl = hostElement.querySelector(BACKDROP_SELECTOR)
+            if (
+              panelEl instanceof HTMLElement &&
+              backdropEl instanceof HTMLElement
+            ) {
+              clearGestureStyles(panelEl, backdropEl)
+            }
+          }
+
+          const openObserver = new MutationObserver(syncGestureStylesToModel)
+          openObserver.observe(hostElement, {
+            attributes: true,
+            attributeFilter: ['data-open'],
+          })
+
+          doc.addEventListener('pointerdown', onPointerDown, listenerOptions)
+          doc.addEventListener('pointermove', onPointerMove, moveListenerOptions)
+          doc.addEventListener('pointerup', onPointerEnd, listenerOptions)
+          doc.addEventListener('pointercancel', onPointerEnd, listenerOptions)
+
+          return () => {
+            releaseGesture(false)
+            openObserver.disconnect()
+            doc.removeEventListener('pointerdown', onPointerDown, listenerOptions)
+            doc.removeEventListener(
+              'pointermove',
+              onPointerMove,
+              moveListenerOptions,
+            )
+            doc.removeEventListener('pointerup', onPointerEnd, listenerOptions)
+            doc.removeEventListener(
+              'pointercancel',
+              onPointerEnd,
+              listenerOptions,
+            )
           }
         }),
         cleanup => Effect.sync(cleanup),
@@ -393,7 +477,7 @@ export const SwipeEdgeMenu = Mount.defineStream(
 
 // VIEW
 
-export type AppMenuSide = 'start' | 'end'
+export type { AppMenuSide } from './appMenuGesture.js'
 
 export type AppMenuStyledConfig = Readonly<{
   /** Top-level render fn so nested submodels stay boundary-scoped. */
@@ -468,6 +552,7 @@ export const view = defineView<Model, Message, ViewInputs>((model, viewInputs) =
           appMenuStyles.backdrop,
           isOpen || isDragging ? appMenuStyles.backdropVisible : undefined,
           isDragging ? appMenuStyles.backdropDragging : undefined,
+          !isOpen && !isDragging ? appMenuStyles.layerIdle : undefined,
         ),
       ),
       [],
@@ -481,6 +566,7 @@ export const view = defineView<Model, Message, ViewInputs>((model, viewInputs) =
           side === 'end' ? appMenuStyles.panelEnd : appMenuStyles.panelStart,
           isOpen ? appMenuStyles.panelOpen : undefined,
           isDragging ? appMenuStyles.panelDragging : undefined,
+          !isOpen && !isDragging ? appMenuStyles.layerIdle : undefined,
         ),
       ),
       [

@@ -19,6 +19,9 @@ export const appMenuStyles = stylex.create({
   hostDragging: {
     pointerEvents: 'auto',
   },
+  layerIdle: {
+    pointerEvents: 'none',
+  },
   backdrop: {
     position: 'fixed',
     inset: 0,

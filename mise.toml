@@ -8,8 +8,12 @@ description = "Typecheck all workspace packages"
 run = "pnpm typecheck"
 
 [tasks.check]
-description = "Run hk check hook (typecheck)"
+description = "Run hk check hook (typecheck + tests)"
 run = "hk run check"
+
+[tasks.test]
+description = "Run vitest across workspace packages"
+run = "pnpm test"
 
 [tasks.pre-commit]
 description = "Run pre-commit hooks"

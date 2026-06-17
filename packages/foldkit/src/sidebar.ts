@@ -80,7 +80,7 @@ type SidebarCtx = Readonly<{
   slotPrefix: string
 }>
 
-const submodelSlotId = (ctx: SidebarCtx, id: string): string =>
+export const submodelSlotId = (ctx: SidebarCtx, id: string): string =>
   ctx.slotPrefix === '' ? id : `${ctx.slotPrefix}-${id}`
 
 const sidebarCtx = (options?: SidebarOptions): SidebarCtx => ({
@@ -245,7 +245,7 @@ const renderCollapsibleMenuItem = <ParentMessage>(
     toParentMessage: item.toParentMessage,
   })
 
-const tooltipEnabled = <ParentMessage>(
+export const tooltipEnabled = <ParentMessage>(
   ctx: SidebarCtx,
   item: NavItem<ParentMessage>,
 ): boolean => ctx.isCollapsed && item.tooltip !== undefined

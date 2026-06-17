@@ -11,6 +11,7 @@
     "dev": "pnpm --filter sidebar-demo dev",
     "build": "pnpm -r --if-present build",
     "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
     "check": "hk run check",
     "prepare": "effect-language-service patch"
   },

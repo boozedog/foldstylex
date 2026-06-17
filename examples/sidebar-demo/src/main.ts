@@ -303,17 +303,19 @@ export const update = (
     >(),
     M.tagsExhaustive({
       ClickedProject: ({ id }) => {
-        const [nextModel, appMenuCommands] = closeAppMenu(
-          evo(model, { activeProject: () => id }),
-        )
+        const [nextModel, appMenuCommands] = closeAppMenu({
+          ...model,
+          activeProject: id,
+        })
 
         return [nextModel, appMenuCommands]
       },
 
       ClickedPlaygroundSub: ({ id }) => {
-        const [nextModel, appMenuCommands] = closeAppMenu(
-          evo(model, { activePlaygroundSub: () => id }),
-        )
+        const [nextModel, appMenuCommands] = closeAppMenu({
+          ...model,
+          activePlaygroundSub: id,
+        })
 
         return [nextModel, appMenuCommands]
       },
